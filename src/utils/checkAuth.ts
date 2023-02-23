@@ -22,7 +22,7 @@ export default (req: Request, res: Response, next: NextFunction) => {
       throw new Error();
     }
 
-    const decoded = <jwt.UserIDJwtPayload>jwt.verify(token, process.env.SECRET_KEY || "dfnb23n1r3t00r22d1");
+    const decoded = <jwt.UserIDJwtPayload>jwt.verify(token, process.env.SECRET_KEY || "secret");
     req.userId = decoded._id;
 		return next();
   } catch (error) {

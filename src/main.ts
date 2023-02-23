@@ -14,9 +14,7 @@ const server = createServer(app);
 // const io = new Server(server, { cors: { origin: "*" } });
 
 const port: number = Number(process.env.PORT) || 5555;
-const mongoUri: string =
-  process.env.MONGODB_URI ||
-  "mongodb+srv://admin:9TcEZxOXs6EiX8fs@cluster0.j4jbcuo.mongodb.net/advanced-social-media?authMechanism=DEFAULT";
+const mongoUri: string = process.env.MONGODB_URI || "";
 
 mongoose
   .connect(mongoUri, {
