@@ -1,22 +1,31 @@
 import mongoose from "mongoose";
 
+export interface IMedia {
+  dest: string;
+  type: string;
+  styles: {
+    transform: string;
+  };
+}
 export interface IPost {
   readonly _id: mongoose.Schema.Types.ObjectId;
-  image: {
-    id: string;
-    url: string;
-  }[];
+  media: IMedia[];
+  aspect: number;
   likes: mongoose.Schema.Types.ObjectId[];
   text?: string;
   comments: mongoose.Schema.Types.ObjectId[];
-  readonly user: mongoose.Schema.Types.ObjectId;
-  allowComments: boolean;
+  user: mongoose.Schema.Types.ObjectId;
+  hideComments: boolean;
   hideLikes: boolean;
 }
 
 const PostSchema = new mongoose.Schema<IPost>(
   {
     text: String,
+    aspect: {
+      type: Number,
+      required: true,
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -36,24 +45,29 @@ const PostSchema = new mongoose.Schema<IPost>(
         default: [],
       },
     ],
-    image: [
+    media: [
       {
-        type: {
-          id: {
-            type: String,
-            required: true,
-          },
-          url: {
-            type: String,
-            required: true,
-          },
+        dest: {
+          type: String,
+          required: true,
         },
-        required: true,
+        type: {
+          type: String,
+          required: true,
+        },
+        styles: {
+          type: {
+            transform: String,
+          },
+          required: true,
+        },
+
+        default: [],
       },
     ],
-    allowComments: {
+    hideComments: {
       type: Boolean,
-      default: true,
+      default: false,
     },
     hideLikes: {
       type: Boolean,

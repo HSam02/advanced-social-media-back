@@ -43,8 +43,8 @@ export const checkValidation = oneOf([
 ]);
 
 export const postCreateValidation = [
-  body("text", "Invalid text").optional().isString(),
-  body("image", "Array of urls (1-10)").isArray({ min: 1, max: 10 }),
-  body("image.*.url", "Invalid url").isURL(),
-  body("image.*.id", "Invalid id").isString().isLength({min: 25})
+  // body("text", "Invalid text").optional().isString(),
+  // body("image", "Array of urls (1-10)").isArray({ min: 1, max: 10 }),
+  // body("image.*.url", "Invalid url").isURL(),
+  // body("image.*.id", "Invalid id").isString().isLength({min: 25})
 ];

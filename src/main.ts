@@ -40,8 +40,8 @@ app.post("/auth/check", checkValidation, handleValidationErrors, UserController.
 
 app.post("/posts", checkAuth, postCreateValidation, handleValidationErrors, PostController.create);
 
-app.post("/uploads", checkAuth, FileController.uploadImages);
-app.delete("/uploads/:id", checkAuth, FileController.deleteOne);
-app.post("/uploads/delete", checkAuth, FileController.deleteMany);
+// app.post("/uploads", checkAuth, FileController.uploadImages);
+// app.delete("/uploads/:id", checkAuth, FileController.deleteOne);
+// app.post("/uploads/delete", checkAuth, FileController.deleteMany);
 
 server.listen(port || 5555, () => console.log(`Server started on port ${port}`));

@@ -2,42 +2,55 @@ import multer from "multer";
 import fs from "fs";
 import { Request, Response } from "express";
 
-const storage = multer.diskStorage({
-  destination: (_, __, callback) => {
+const postsStorage = multer.diskStorage({
+  destination: (req, __, callback) => {
+    console.log(req.userId);
+    const userDir = `./src/uploads/${req.userId}`;
+
     if (!fs.existsSync("./src/uploads")) {
       fs.mkdirSync("./src/uploads");
     }
-    callback(null, "./src/uploads");
+    
+    if (!fs.existsSync(userDir)) {
+      fs.mkdirSync(userDir);
+    }
+
+    if (!fs.existsSync(`${userDir}/posts`)) {
+      fs.mkdirSync(`${userDir}/posts`);
+    }
+
+    callback(null, `${userDir}/posts`);
   },
   filename: (req, file, callback) => {
     const fileName = `${req.userId}_${Math.random()
       .toString()
       .replace("0.", "")
       .substring(0, 6)}_${Date.now()}.${file.originalname.split(".").pop()}`;
-    req.on("error", () => {
-      if (fs.existsSync(`./src/uploads/${fileName}`)) {
-        fs.unlinkSync(`./src/uploads/${fileName}`);
-      }
-      const err = new Error("Image was not upload");
-      err.name = "stop";
-      callback(err, fileName);
-    });
+    // req.on("error", () => {
+    //   if (fs.existsSync(`./src/uploads/${fileName}`)) {
+    //     fs.unlinkSync(`./src/uploads/${fileName}`);
+    //   }
+    //   const err = new Error("Image was not upload");
+    //   err.name = "stop";
+    //   callback(err, fileName);
+    // });
     callback(null, fileName);
   },
 });
 const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  storage: postsStorage,
+  limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (_, file, callback) => {
-    if (file.mimetype !== "image/jpeg" && file.mimetype !== "image/png") {
+    if (file.mimetype !== "image/jpeg" && file.mimetype !== "image/png" && file.mimetype !== "video/mp4") {
       callback(null, false);
-      const err = new Error("Only .png, .jpg and .jpeg format allowed!");
+      const err = new Error("Only .png, .jpg, .jpeg and .mp4 format allowed!");
       err.name = "ExtensionError";
       return callback(err);
     }
     callback(null, true);
   },
-}).array("images", 10);
+}).array("post_media", 10);
+
 export const uploadImages = (req: Request, res: Response) => {
   upload(req, res, (error) => {
     if (error) {
@@ -46,6 +59,9 @@ export const uploadImages = (req: Request, res: Response) => {
         error,
       });
     }
+    const data = JSON.parse(req.body.data);
+    console.log(data);
+    
     const files = req.files as Express.Multer.File[];
     const fileNames = files.map((file) => ({
       name: file.filename
