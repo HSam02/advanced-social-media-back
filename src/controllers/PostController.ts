@@ -7,8 +7,8 @@ import mongoose, { HydratedDocument } from "mongoose";
 import { IUser } from "../models/user.js";
 
 const postsMediaStorage = multer.diskStorage({
-	destination: (req, __, callback) => {
-		const userDir = `./src/uploads/${req.userId}`;
+  destination: (req, __, callback) => {
+    const userDir = `./src/uploads/${req.userId}`;
 
     if (!fs.existsSync("./src/uploads")) {
       fs.mkdirSync("./src/uploads");
@@ -30,7 +30,7 @@ const postsMediaStorage = multer.diskStorage({
       .replace("0.", "")
       .substring(0, 6)}_${Date.now()}.${file.originalname.split(".").pop()}`;
     req.on("error", () => {
-			const dest = `./src/uploads/${req.userId}/posts/${fileName}`;
+      const dest = `./src/uploads/${req.userId}/posts/${fileName}`;
       if (fs.existsSync(dest)) {
         fs.unlinkSync(dest);
       }
@@ -67,7 +67,7 @@ export const create = (req: Request, res: Response) => {
       const data: IPost = JSON.parse(req.body.data);
 
       const files = req.files as Express.Multer.File[];
-      const filesDest = files.map((file) => file.destination + '/' + file.filename);
+      const filesDest = files.map((file) => file.destination.slice(5) + "/" + file.filename);
 
       data.media.forEach((media, i) => (media.dest = filesDest[i]));
       data.user = req.userId as unknown as mongoose.Schema.Types.ObjectId;
@@ -75,16 +75,38 @@ export const create = (req: Request, res: Response) => {
       const doc: HydratedDocument<IPost> = new PostModel(data);
       const newPost: IPost = await doc.save();
 
-      const post: IPost | null = await PostModel.findById(newPost._id).populate({path: "user", select: ["username", "avatarUrl"]}).exec();
+      const post: IPost | null = await PostModel.findById(newPost._id)
+        .populate({ path: "user", select: ["username", "avatarUrl"] })
+        .exec();
 
       res.json({
         post,
       });
     } catch (error) {
       res.status(400).json({
-				message: "The post didn't create",
-				error
-			})
+        message: "The post didn't create",
+        error,
+      });
     }
   });
+};
+
+export const getOne = async (req: Request, res: Response) => {
+  try {
+    const post = await PostModel.findById(req.params.id)
+      .populate({ path: "user", select: ["username", "avatarUrl"] })
+      .exec();
+    if (!post) {
+      return res.status(404).json({
+        message: "The post didn't find",
+      });
+    }
+    res.json(post);
+  } catch (error) {
+    console.log(error);
+    res.status(400).json({
+      message: "The post didn't find",
+      error,
+    });
+  }
 };

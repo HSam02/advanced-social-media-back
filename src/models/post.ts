@@ -45,26 +45,27 @@ const PostSchema = new mongoose.Schema<IPost>(
         default: [],
       },
     ],
-    media: [
-      {
-        dest: {
-          type: String,
-          required: true,
-        },
-        type: {
-          type: String,
-          required: true,
-        },
-        styles: {
-          type: {
-            transform: String,
+    media: {
+      type: [
+        {
+          dest: {
+            type: String,
+            required: true,
           },
-          required: true,
+          type: {
+            type: String,
+            required: true,
+          },
+          styles: {
+            type: {
+              transform: String,
+            },
+            required: true,
+          },
         },
-
-        default: [],
-      },
-    ],
+      ],
+      required: true,
+    },
     hideComments: {
       type: Boolean,
       default: false,

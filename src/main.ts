@@ -38,7 +38,14 @@ app.post("/auth/login", loginValidation, handleValidationErrors, UserController.
 app.get("/auth/me", checkAuth, UserController.getUser);
 app.post("/auth/check", checkValidation, handleValidationErrors, UserController.checkIsFree);
 
-app.post("/posts", checkAuth, postCreateValidation, handleValidationErrors, PostController.create);
+app.post(
+  "/posts",
+  checkAuth,
+  // postCreateValidation,
+  // handleValidationErrors,
+  PostController.create,
+);
+app.get("/posts/:id", checkAuth, PostController.getOne);
 
 // app.post("/uploads", checkAuth, FileController.uploadImages);
 // app.delete("/uploads/:id", checkAuth, FileController.deleteOne);

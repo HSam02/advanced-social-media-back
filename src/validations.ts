@@ -1,4 +1,4 @@
-import { body, oneOf } from "express-validator";
+import { body, check, oneOf } from "express-validator";
 
 export const registerValidation = [
   body("email", "Invalid email").isEmail(),
@@ -43,8 +43,12 @@ export const checkValidation = oneOf([
 ]);
 
 export const postCreateValidation = [
-  // body("text", "Invalid text").optional().isString(),
-  // body("image", "Array of urls (1-10)").isArray({ min: 1, max: 10 }),
-  // body("image.*.url", "Invalid url").isURL(),
-  // body("image.*.id", "Invalid id").isString().isLength({min: 25})
+  body("text", "Invalid text").optional().isString(),
+  check("aspect", "Invalid aspect").isNumeric(),
+  body("hideComments", "Invalid hideComments").isBoolean(),
+  body("hideLikes", "Invalid hideLikes").isBoolean(),
+  body("media", "Array of media (1-10)").isArray({ min: 1, max: 10 }),
+  body("image.*.dest", "Invalid dest").isString(),
+  body("image.*.type", "Invalid type").isIn(["video", "image"]),
+  body("image.*.styles.transform", "Invalid type").isString(),
 ];
