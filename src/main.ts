@@ -37,6 +37,8 @@ app.post("/auth/register", registerValidation, handleValidationErrors, UserContr
 app.post("/auth/login", loginValidation, handleValidationErrors, UserController.login);
 app.get("/auth/me", checkAuth, UserController.getUser);
 app.post("/auth/check", checkValidation, handleValidationErrors, UserController.checkIsFree);
+app.post("/auth/avatar", checkAuth, UserController.uploadAvatar);
+app.delete("/auth/avatar", checkAuth, UserController.removeAvatar);
 
 app.post(
   "/posts",

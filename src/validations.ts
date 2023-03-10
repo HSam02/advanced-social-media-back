@@ -17,7 +17,6 @@ export const registerValidation = [
       .matches(/^([a-zA-Z]{2,}\s[a-zA-Z]{1,}'?-?[a-zA-Z]{2,}\s?([a-zA-Z]{1,})?)/),
     body("fullname").isEmpty(),
   ]),
-  body("avatarUrl", "Invalid URL").optional().isURL(),
 ];
 
 export const loginValidation = [

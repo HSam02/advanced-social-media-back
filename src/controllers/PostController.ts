@@ -3,6 +3,7 @@ import multer from "multer";
 import fs from "fs";
 
 import PostModel, { IPost } from "../models/post.js";
+import UserModel from "../models/user.js";
 import mongoose, { HydratedDocument } from "mongoose";
 import { IUser } from "../models/user.js";
 
@@ -73,14 +74,19 @@ export const create = (req: Request, res: Response) => {
       data.user = req.userId as unknown as mongoose.Schema.Types.ObjectId;
 
       const doc: HydratedDocument<IPost> = new PostModel(data);
-      const newPost: IPost = await doc.save();
-
-      const post: IPost | null = await PostModel.findById(newPost._id)
-        .populate({ path: "user", select: ["username", "avatarUrl"] })
-        .exec();
+      const post = await doc.save();
+      const user = await UserModel.findOneAndUpdate({_id: req.userId}, {$push: {posts: post._id}}).select(["username", "avatarDest"]);
+      
+      
+      // const post: IPost | null = await PostModel.findById(newPost._id)
+      //   .populate({ path: "user", select: ["username", "avatarDest"] })
+      //   .exec();
 
       res.json({
-        post,
+        post: {
+          ...post,
+          user
+        }
       });
     } catch (error) {
       res.status(400).json({
@@ -94,7 +100,7 @@ export const create = (req: Request, res: Response) => {
 export const getOne = async (req: Request, res: Response) => {
   try {
     const post = await PostModel.findById(req.params.id)
-      .populate({ path: "user", select: ["username", "avatarUrl"] })
+      .populate({ path: "user", select: ["username", "avatarDest"] })
       .exec();
     if (!post) {
       return res.status(404).json({

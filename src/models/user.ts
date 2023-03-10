@@ -6,7 +6,7 @@ export interface IUser {
   username: string;
   passwordHash: string;
   fullname?: string;
-  avatarUrl?: string;
+  avatarDest?: string;
   privateAccount: boolean;
   bio?: string;
   followers: mongoose.Schema.Types.ObjectId[];
@@ -35,7 +35,7 @@ const UserSchema = new mongoose.Schema<IUser>(
       required: true,
     },
     fullname: String,
-    avatarUrl: String,
+    avatarDest: String,
     bio: String,
     followers: [
       {
