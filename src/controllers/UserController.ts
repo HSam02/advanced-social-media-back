@@ -1,9 +1,9 @@
-import jwt from "jsonwebtoken";
-import UserModel, { IUser } from "../models/user.js";
-import bcrypt from "bcrypt";
 import { Request, Response } from "express";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
 import multer from "multer";
 import fs from "fs";
+import UserModel, { IUser } from "../models/user.js";
 
 const avatarImageStorage = multer.diskStorage({
   destination: (req, __, callback) => {

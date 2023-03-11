@@ -1,4 +1,4 @@
-import express, { Express, Request, Response } from "express";
+import express, { Express } from "express";
 import { createServer } from "http";
 // import { Server } from "socket.io";
 import mongoose, { ConnectOptions } from "mongoose";
@@ -7,7 +7,7 @@ import cors from "cors";
 import { checkValidation, loginValidation, postCreateValidation, registerValidation } from "./validations.js";
 import { handleValidationErrors, checkAuth } from "./utils/index.js";
 
-import { UserController, PostController, FileController } from "./controllers/index.js";
+import { UserController, PostController } from "./controllers/index.js";
 
 const app: Express = express();
 const server = createServer(app);
@@ -48,10 +48,5 @@ app.post(
   PostController.create,
 );
 app.get("/posts/:id", checkAuth, PostController.getOne);
-app.get("/posts", checkAuth, PostController.getUserPosts);
-
-// app.post("/uploads", checkAuth, FileController.uploadImages);
-// app.delete("/uploads/:id", checkAuth, FileController.deleteOne);
-// app.post("/uploads/delete", checkAuth, FileController.deleteMany);
 
 server.listen(port || 5555, () => console.log(`Server started on port ${port}`));

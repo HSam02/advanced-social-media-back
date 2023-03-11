@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import multer from "multer";
 import fs from "fs";
-
 import PostModel, { IPost } from "../models/post.js";
 import UserModel from "../models/user.js";
-import mongoose, { HydratedDocument } from "mongoose";
 
 const postsMediaStorage = multer.diskStorage({
   destination: (req, __, callback) => {
@@ -72,16 +71,12 @@ export const create = (req: Request, res: Response) => {
       data.media.forEach((media, i) => (media.dest = filesDest[i]));
       data.user = req.userId as unknown as mongoose.Schema.Types.ObjectId;
 
-      const doc: HydratedDocument<IPost> = new PostModel(data);
+      const doc = new PostModel(data);
       const post = await doc.save();
       const user = await UserModel.findOneAndUpdate({ _id: req.userId }, { $push: { posts: post._id } }).select([
         "username",
         "avatarDest",
       ]);
-
-      // const post: IPost | null = await PostModel.findById(newPost._id)
-      //   .populate({ path: "user", select: ["username", "avatarDest"] })
-      //   .exec();
 
       res.json({
         ...post.toObject(),
@@ -110,23 +105,6 @@ export const getOne = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(400).json({
       message: "The post didn't find",
-      error,
-    });
-  }
-};
-
-export const getUserPosts = async (req: Request, res: Response) => {
-  try {
-    const posts = await PostModel.find().select("-user").exec();
-    if (!posts) {
-      return res.status(400).json({
-        message: "The posts didn't find",
-      });
-    }
-    res.json(posts);
-  } catch (error) {
-    res.status(400).json({
-      message: "The posts didn't find",
       error,
     });
   }

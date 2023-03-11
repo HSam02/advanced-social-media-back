@@ -14,7 +14,6 @@ export interface IUser {
   posts: mongoose.Schema.Types.ObjectId[];
   saved: mongoose.Schema.Types.ObjectId[];
   chats: mongoose.Schema.Types.ObjectId[];
-  comments: mongoose.Schema.Types.ObjectId[];
   notifications: mongoose.Schema.Types.ObjectId[];
 }
 
@@ -76,13 +75,6 @@ const UserSchema = new mongoose.Schema<IUser>(
       type: Boolean,
       default: false,
     },
-    comments: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Comment",
-        default: [],
-      },
-    ],
     notifications: [
       {
         type: mongoose.Schema.Types.ObjectId,
