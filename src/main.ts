@@ -48,6 +48,7 @@ app.post(
   PostController.create,
 );
 app.get("/posts/:id", checkAuth, PostController.getOne);
+app.get("/posts", checkAuth, PostController.getUserPosts);
 
 // app.post("/uploads", checkAuth, FileController.uploadImages);
 // app.delete("/uploads/:id", checkAuth, FileController.deleteOne);

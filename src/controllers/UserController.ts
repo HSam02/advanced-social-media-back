@@ -2,7 +2,6 @@ import jwt from "jsonwebtoken";
 import UserModel, { IUser } from "../models/user.js";
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
-import { HydratedDocument } from "mongoose";
 import multer from "multer";
 import fs from "fs";
 
@@ -62,9 +61,9 @@ export const register = async (req: Request, res: Response) => {
 
     newUser.passwordHash = hash;
 
-    const doc: HydratedDocument<IUser> = new UserModel(newUser);
+    const doc = new UserModel(newUser);
 
-    const user: IUser = await doc.save();
+    const user = await doc.save();
 
     const token = jwt.sign(
       {
@@ -76,7 +75,7 @@ export const register = async (req: Request, res: Response) => {
       },
     );
 
-    const userData: Partial<IUser> = user;
+    const userData: Partial<IUser> = user.toObject();
     delete userData["passwordHash"];
 
     res.json({
@@ -98,9 +97,9 @@ export const login = async (req: Request, res: Response) => {
       password: string;
     }
     const { login, password } = <IloginUser>req.body;
-    const user = await UserModel.findOne<IUser>({
+    const user = await UserModel.findOne({
       $or: [{ email: login }, { username: login }],
-    });
+    }).populate("posts").exec();
 
     if (!user) {
       return res.status(403).json({
@@ -116,8 +115,9 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    const userData: Partial<IUser> = user;
+    const userData: Partial<IUser> = user.toObject();
     delete userData["passwordHash"];
+    userData.posts?.reverse();
 
     const token = jwt.sign(
       {
@@ -140,14 +140,14 @@ export const login = async (req: Request, res: Response) => {
 
 export const getUser = async (req: Request, res: Response) => {
   try {
-    const user = await UserModel.findById<IUser>(req.userId).select("-passwordHash");
+    const user = await UserModel.findById<IUser>(req.userId).select("-passwordHash").populate("posts").exec();
 
     if (!user) {
       return res.status(404).json({
         message: "User didn't find",
       });
     }
-
+    user.posts.reverse();
     res.json(user);
   } catch (error) {
     res.status(500).json({
