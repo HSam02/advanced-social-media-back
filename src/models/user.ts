@@ -1,6 +1,12 @@
 import mongoose from "mongoose";
+import { IPost } from "./post.js";
 //??????????????????????
-export interface IUser {
+export interface IUser extends Omit<IUserSchema, "posts" | "saved"> {
+  posts: IPost[];
+  saved: IPost[];
+}
+
+export interface IUserSchema {
   readonly _id: mongoose.Schema.Types.ObjectId;
   email: string;
   username: string;
@@ -17,7 +23,7 @@ export interface IUser {
   notifications: mongoose.Schema.Types.ObjectId[];
 }
 
-const UserSchema = new mongoose.Schema<IUser>(
+const UserSchema = new mongoose.Schema<IUserSchema>(
   {
     email: {
       type: String,
@@ -89,4 +95,4 @@ const UserSchema = new mongoose.Schema<IUser>(
   },
 );
 
-export default mongoose.model<IUser>("User", UserSchema);
+export default mongoose.model<IUserSchema>("User", UserSchema);

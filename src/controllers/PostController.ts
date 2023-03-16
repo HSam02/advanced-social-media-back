@@ -2,8 +2,8 @@ import { Request, Response } from "express";
 import mongoose from "mongoose";
 import multer from "multer";
 import fs from "fs";
-import PostModel, { IPost } from "../models/post.js";
-import UserModel from "../models/user.js";
+import PostModel, { IPostSchema } from "../models/post.js";
+import UserModel, { IUserSchema } from "../models/user.js";
 
 const postsMediaStorage = multer.diskStorage({
   destination: (req, __, callback) => {
@@ -63,7 +63,7 @@ export const create = (req: Request, res: Response) => {
       });
     }
     try {
-      const data: IPost = JSON.parse(req.body.data);
+      const data: IPostSchema = JSON.parse(req.body.data);
 
       const files = req.files as Express.Multer.File[];
       const filesDest = files.map((file) => file.destination.slice(5) + "/" + file.filename);
@@ -91,6 +91,27 @@ export const create = (req: Request, res: Response) => {
   });
 };
 
+// export const getUserPosts = async (req: Request, res: Response) => {
+//   try {
+//     const user = await UserModel.findById<IUserSchema>(req.userId)
+//       .select("-passwordHash")
+//       .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
+//       .exec();
+//     if (!user) {
+//       return res.status(404).json({
+//         message: "The user didn't find",
+//       });
+//     }
+
+//     res.json(user.posts.reverse());
+//   } catch (error) {
+//     res.status(400).json({
+//       message: "The post didn't find",
+//       error,
+//     });
+//   }
+// };
+
 export const getOne = async (req: Request, res: Response) => {
   try {
     const post = await PostModel.findById(req.params.id)
@@ -102,6 +123,123 @@ export const getOne = async (req: Request, res: Response) => {
       });
     }
     res.json(post);
+  } catch (error) {
+    res.status(400).json({
+      message: "The post didn't find",
+      error,
+    });
+  }
+};
+
+export const addLike = async (req: Request, res: Response) => {
+  try {
+    const post = await PostModel.findByIdAndUpdate(
+      req.params.id,
+      { $addToSet: { likes: req.userId } },
+      { returnDocument: "after" },
+    );
+    if (!post) {
+      return res.status(404).json({
+        message: "Post didn't find",
+      });
+    }
+
+    res.json({
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: "The post didn't find",
+      error,
+    });
+  }
+};
+
+export const removeLike = async (req: Request, res: Response) => {
+  try {
+    const post = await PostModel.findByIdAndUpdate(
+      req.params.id,
+      { $pull: { likes: req.userId } },
+      { returnDocument: "after" },
+    );
+    if (!post) {
+      return res.status(404).json({
+        message: "Post didn't find",
+      });
+    }
+
+    res.json({
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: "The post didn't find",
+      error,
+    });
+  }
+};
+
+export const addSaved = async (req: Request, res: Response) => {
+  try {
+    const post = await PostModel.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { saves: 1 } },
+      { returnDocument: "after" },
+    );
+    if (!post) {
+      return res.status(404).json({
+        message: "Post didn't find",
+      });
+    }
+    const user = await UserModel.findByIdAndUpdate(
+      req.userId,
+      { $addToSet: { saved: req.params.id } },
+      { returnDocument: "after" },
+    );
+    if (!user) {
+      return res.status(404).json({
+        message: "User didn't find",
+      });
+    }
+
+    res.json({
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: "The post didn't find",
+      error,
+    });
+  }
+};
+
+export const removeSaved = async (req: Request, res: Response) => {
+  try {
+    const post = await PostModel.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { saves: -1 } },
+      { returnDocument: "after" },
+    );
+    if (!post) {
+      return res.status(404).json({
+        message: "Post didn't find",
+      });
+    }
+
+    const user = await UserModel.findByIdAndUpdate(
+      req.userId,
+      { $pull: { saved: req.params.id } },
+      { returnDocument: "after" },
+    );
+    if (!user) {
+      return res.status(404).json({
+        message: "User didn't find",
+      });
+    }
+
+    res.json({
+      success: true,
+    });
   } catch (error) {
     res.status(400).json({
       message: "The post didn't find",

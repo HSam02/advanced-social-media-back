@@ -40,6 +40,8 @@ app.post("/auth/check", checkValidation, handleValidationErrors, UserController.
 app.post("/auth/avatar", checkAuth, UserController.uploadAvatar);
 app.delete("/auth/avatar", checkAuth, UserController.removeAvatar);
 
+// app.get("/user/posts", checkAuth, PostController.getUserPosts);
+
 app.post(
   "/posts",
   checkAuth,
@@ -48,5 +50,11 @@ app.post(
   PostController.create,
 );
 app.get("/posts/:id", checkAuth, PostController.getOne);
+
+app.post("/posts/like/:id", checkAuth, PostController.addLike);
+app.delete("/posts/like/:id", checkAuth, PostController.removeLike);
+
+app.post("/posts/save/:id", checkAuth, PostController.addSaved);
+app.delete("/posts/save/:id", checkAuth, PostController.removeSaved);
 
 server.listen(port || 5555, () => console.log(`Server started on port ${port}`));

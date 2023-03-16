@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import fs from "fs";
-import UserModel, { IUser } from "../models/user.js";
+import UserModel, { IUser, IUserSchema } from "../models/user.js";
 
 const avatarImageStorage = multer.diskStorage({
   destination: (req, __, callback) => {
@@ -99,7 +99,10 @@ export const login = async (req: Request, res: Response) => {
     const { login, password } = <IloginUser>req.body;
     const user = await UserModel.findOne({
       $or: [{ email: login }, { username: login }],
-    }).populate("posts").exec();
+    })
+      .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
+      .populate({ path: "saved", populate: { path: "user", select: ["username", "avatarDest"] } })
+      .exec();
 
     if (!user) {
       return res.status(403).json({
@@ -118,6 +121,7 @@ export const login = async (req: Request, res: Response) => {
     const userData: Partial<IUser> = user.toObject();
     delete userData["passwordHash"];
     userData.posts?.reverse();
+    userData.saved?.reverse();
 
     const token = jwt.sign(
       {
@@ -140,13 +144,19 @@ export const login = async (req: Request, res: Response) => {
 
 export const getUser = async (req: Request, res: Response) => {
   try {
-    const user = await UserModel.findById<IUser>(req.userId).select("-passwordHash").populate("posts").exec();
+    const user = await UserModel.findById<IUserSchema>(req.userId)
+      .select("-passwordHash")
+      .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
+      .populate({ path: "saved", populate: { path: "user", select: ["username", "avatarDest"] } })
+      .exec();
 
     if (!user) {
       return res.status(404).json({
         message: "User didn't find",
       });
     }
+
+    user.saved.reverse();
     user.posts.reverse();
     res.json(user);
   } catch (error) {
