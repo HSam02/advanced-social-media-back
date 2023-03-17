@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import mongoose from "mongoose";
 import multer from "multer";
 import fs from "fs";
-import PostModel, { IPostSchema } from "../models/post.js";
+import PostModel, { IPost, IPostSchema } from "../models/post.js";
 import UserModel, { IUserSchema } from "../models/user.js";
 
 const postsMediaStorage = multer.diskStorage({
@@ -89,6 +89,42 @@ export const create = (req: Request, res: Response) => {
       });
     }
   });
+};
+
+export const remove = async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id;
+
+    const post = await PostModel.findById(id);
+    if (!post) {
+      return res.status(40).json({
+        message: "Post didn't find",
+      });
+    }
+
+    if (post.user.toString() !== req.userId?.toString()) {
+      return res.status(403).json({
+        message: "No access!",
+      });
+    }
+
+    const deletedPost = await PostModel.findByIdAndDelete(id);
+    if (!deletedPost) {
+      return res.status(403).json({
+        message: "Post didn't delete",
+      });
+    }
+    deletedPost.media.forEach((el) => fs.existsSync(`./src${el.dest}`) && fs.unlinkSync(`./src${el.dest}`));
+    await UserModel.findByIdAndUpdate(req.userId, { $pull: { saved: id, posts: id } });
+    res.json({
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: "The post didn't delete",
+      error,
+    });
+  }
 };
 
 // export const getUserPosts = async (req: Request, res: Response) => {
@@ -181,11 +217,7 @@ export const removeLike = async (req: Request, res: Response) => {
 
 export const addSaved = async (req: Request, res: Response) => {
   try {
-    const post = await PostModel.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { saves: 1 } },
-      { returnDocument: "after" },
-    );
+    const post = await PostModel.findByIdAndUpdate(req.params.id, { $inc: { saves: 1 } }, { returnDocument: "after" });
     if (!post) {
       return res.status(404).json({
         message: "Post didn't find",
@@ -215,11 +247,7 @@ export const addSaved = async (req: Request, res: Response) => {
 
 export const removeSaved = async (req: Request, res: Response) => {
   try {
-    const post = await PostModel.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { saves: -1 } },
-      { returnDocument: "after" },
-    );
+    const post = await PostModel.findByIdAndUpdate(req.params.id, { $inc: { saves: -1 } }, { returnDocument: "after" });
     if (!post) {
       return res.status(404).json({
         message: "Post didn't find",

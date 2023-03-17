@@ -50,6 +50,7 @@ app.post(
   PostController.create,
 );
 app.get("/posts/:id", checkAuth, PostController.getOne);
+app.delete("/posts/:id", checkAuth, PostController.remove);
 
 app.post("/posts/like/:id", checkAuth, PostController.addLike);
 app.delete("/posts/like/:id", checkAuth, PostController.removeLike);

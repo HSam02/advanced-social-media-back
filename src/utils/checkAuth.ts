@@ -1,16 +1,16 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { Types } from "mongoose";
+import { Schema } from "mongoose";
 
 declare module "jsonwebtoken" {
   export interface UserIDJwtPayload extends jwt.JwtPayload {
-    _id: Types.ObjectId
+    _id: Schema.Types.ObjectId
   }
 }
 
 declare module "express" {
   interface Request {
-    userId?: Types.ObjectId
+    userId?: Schema.Types.ObjectId
   }
 }
 
