@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { IUser } from "./user.js";
 
 export interface IMedia {
   dest: string;
@@ -7,21 +8,27 @@ export interface IMedia {
     transform: string;
   };
 }
-export interface IPost {
+
+export interface IPost extends Omit<IPostSchema, "user"> {
+  user: IUser;
+}
+
+export interface IPostSchema {
   readonly _id: mongoose.Schema.Types.ObjectId;
   media: IMedia[];
   aspect: number;
   likes: mongoose.Schema.Types.ObjectId[];
-  text?: string;
+  saves: number;
+  text: string;
   comments: mongoose.Schema.Types.ObjectId[];
   user: mongoose.Schema.Types.ObjectId;
   hideComments: boolean;
   hideLikes: boolean;
 }
 
-const PostSchema = new mongoose.Schema<IPost>(
+const PostSchema = new mongoose.Schema<IPostSchema>(
   {
-    text: String,
+    text: { type: String, default: "" },
     aspect: {
       type: Number,
       required: true,
@@ -38,6 +45,10 @@ const PostSchema = new mongoose.Schema<IPost>(
         default: [],
       },
     ],
+    saves: {
+      type: Number,
+      default: 0,
+    },
     comments: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -45,26 +56,27 @@ const PostSchema = new mongoose.Schema<IPost>(
         default: [],
       },
     ],
-    media: [
-      {
-        dest: {
-          type: String,
-          required: true,
-        },
-        type: {
-          type: String,
-          required: true,
-        },
-        styles: {
-          type: {
-            transform: String,
+    media: {
+      type: [
+        {
+          dest: {
+            type: String,
+            required: true,
           },
-          required: true,
+          type: {
+            type: String,
+            required: true,
+          },
+          styles: {
+            type: {
+              transform: String,
+            },
+            required: true,
+          },
         },
-
-        default: [],
-      },
-    ],
+      ],
+      required: true,
+    },
     hideComments: {
       type: Boolean,
       default: false,
@@ -79,4 +91,4 @@ const PostSchema = new mongoose.Schema<IPost>(
   },
 );
 
-export default mongoose.model<IPost>("Post", PostSchema);
+export default mongoose.model<IPostSchema>("Post", PostSchema);

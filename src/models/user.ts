@@ -1,12 +1,18 @@
 import mongoose from "mongoose";
+import { IPost } from "./post.js";
 //??????????????????????
-export interface IUser {
+export interface IUser extends Omit<IUserSchema, "posts" | "saved"> {
+  posts: IPost[];
+  saved: IPost[];
+}
+
+export interface IUserSchema {
   readonly _id: mongoose.Schema.Types.ObjectId;
   email: string;
   username: string;
   passwordHash: string;
   fullname?: string;
-  avatarUrl?: string;
+  avatarDest?: string;
   privateAccount: boolean;
   bio?: string;
   followers: mongoose.Schema.Types.ObjectId[];
@@ -14,11 +20,10 @@ export interface IUser {
   posts: mongoose.Schema.Types.ObjectId[];
   saved: mongoose.Schema.Types.ObjectId[];
   chats: mongoose.Schema.Types.ObjectId[];
-  comments: mongoose.Schema.Types.ObjectId[];
   notifications: mongoose.Schema.Types.ObjectId[];
 }
 
-const UserSchema = new mongoose.Schema<IUser>(
+const UserSchema = new mongoose.Schema<IUserSchema>(
   {
     email: {
       type: String,
@@ -35,7 +40,7 @@ const UserSchema = new mongoose.Schema<IUser>(
       required: true,
     },
     fullname: String,
-    avatarUrl: String,
+    avatarDest: String,
     bio: String,
     followers: [
       {
@@ -76,13 +81,6 @@ const UserSchema = new mongoose.Schema<IUser>(
       type: Boolean,
       default: false,
     },
-    comments: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Comment",
-        default: [],
-      },
-    ],
     notifications: [
       {
         type: mongoose.Schema.Types.ObjectId,
@@ -97,4 +95,4 @@ const UserSchema = new mongoose.Schema<IUser>(
   },
 );
 
-export default mongoose.model<IUser>("User", UserSchema);
+export default mongoose.model<IUserSchema>("User", UserSchema);
