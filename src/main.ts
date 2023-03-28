@@ -4,7 +4,13 @@ import { createServer } from "http";
 import mongoose, { ConnectOptions } from "mongoose";
 import cors from "cors";
 
-import { checkValidation, loginValidation, postCreateValidation, registerValidation } from "./validations.js";
+import {
+  checkValidation,
+  loginValidation,
+  postCreateValidation,
+  postEditValidation,
+  registerValidation,
+} from "./validations.js";
 import { handleValidationErrors, checkAuth } from "./utils/index.js";
 
 import { UserController, PostController } from "./controllers/index.js";
@@ -51,6 +57,9 @@ app.post(
 );
 app.get("/posts/:id", checkAuth, PostController.getOne);
 app.delete("/posts/:id", checkAuth, PostController.remove);
+app.patch("/posts/:id", checkAuth, postEditValidation, handleValidationErrors, PostController.edit);
+
+app.get("/user/posts", checkAuth, PostController.getUserPosts);
 
 app.post("/posts/like/:id", checkAuth, PostController.addLike);
 app.delete("/posts/like/:id", checkAuth, PostController.removeLike);

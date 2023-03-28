@@ -97,12 +97,12 @@ export const remove = async (req: Request, res: Response) => {
 
     const post = await PostModel.findById(id);
     if (!post) {
-      return res.status(40).json({
+      return res.status(400).json({
         message: "Post didn't find",
       });
     }
 
-    if (post.user.toString() !== req.userId?.toString()) {
+    if (post.user.toString() !== req.userId) {
       return res.status(403).json({
         message: "No access!",
       });
@@ -127,26 +127,43 @@ export const remove = async (req: Request, res: Response) => {
   }
 };
 
-// export const getUserPosts = async (req: Request, res: Response) => {
-//   try {
-//     const user = await UserModel.findById<IUserSchema>(req.userId)
-//       .select("-passwordHash")
-//       .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
-//       .exec();
-//     if (!user) {
-//       return res.status(404).json({
-//         message: "The user didn't find",
-//       });
-//     }
+export const getUserPosts = async (req: Request, res: Response) => {
+  try {
+    const page = Number(req.query.page) > 0 ? Number(req.query.page) : 1;
+    const limit = Number(req.query.limit) > 0 ? Number(req.query.limit) : 10;
 
-//     res.json(user.posts.reverse());
-//   } catch (error) {
-//     res.status(400).json({
-//       message: "The post didn't find",
-//       error,
-//     });
-//   }
-// };
+    const postsCount = await PostModel.countDocuments({ user: req.userId });
+    const pages = Math.ceil(postsCount / limit);
+
+    if (page > pages) {
+      return res.status(403).json({
+        message: "Page number is bigger than possible",
+        pages,
+      });
+    }
+    
+    const posts = await PostModel.find({ user: req.userId })
+      .sort({ _id: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate("user")
+      .select(["username", "avatarDest"])
+      .exec();
+
+    if (!posts) {
+      return res.status(404).json({
+        message: "The posts didn't find",
+      });
+    }
+
+    res.json({ posts, pages });
+  } catch (error) {
+    res.status(400).json({
+      message: "The post didn't find",
+      error,
+    });
+  }
+};
 
 export const getOne = async (req: Request, res: Response) => {
   try {
@@ -271,6 +288,31 @@ export const removeSaved = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(400).json({
       message: "The post didn't find",
+      error,
+    });
+  }
+};
+
+export const edit = async (req: Request, res: Response) => {
+  try {
+    const post = await PostModel.findById(req.params.id);
+    if (!post) {
+      return res.status(400).json({
+        message: "Post didn't find",
+      });
+    }
+    if (post.user.toString() !== req.userId) {
+      return res.status(403).json({
+        message: "No access!",
+      });
+    }
+    await PostModel.findByIdAndUpdate(req.params.id, { $set: req.body });
+    res.json({
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: "The post didn't update",
       error,
     });
   }

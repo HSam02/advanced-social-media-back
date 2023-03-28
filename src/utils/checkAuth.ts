@@ -10,7 +10,8 @@ declare module "jsonwebtoken" {
 
 declare module "express" {
   interface Request {
-    userId?: Schema.Types.ObjectId
+    userId?: string
+    // userId?: Schema.Types.ObjectId
   }
 }
 
@@ -23,7 +24,7 @@ export default (req: Request, res: Response, next: NextFunction) => {
     }
 
     const decoded = <jwt.UserIDJwtPayload>jwt.verify(token, process.env.SECRET_KEY || "secret");
-    req.userId = decoded._id;
+    req.userId = decoded._id as unknown as string;
 		return next();
   } catch (error) {
     res.status(403).json({
