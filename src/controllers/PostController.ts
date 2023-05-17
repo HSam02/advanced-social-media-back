@@ -1,13 +1,36 @@
 import { Request, Response } from "express";
-import mongoose from "mongoose";
+import mongoose, { ObjectId } from "mongoose";
 import multer from "multer";
 import fs from "fs";
 import PostModel, { IPost, IPostSchema } from "../models/post.js";
 import UserModel, { IUserSchema } from "../models/user.js";
 
+const getResPosts = (
+  userId: string | undefined,
+  posts: Omit<
+    mongoose.Document<unknown, any, IPostSchema> &
+      IPostSchema &
+      Required<{
+        _id: mongoose.Schema.Types.ObjectId;
+      }>,
+    never
+  >[],
+) => {
+  return posts.map((post) => {
+    const liked = post.likes.includes(userId as unknown as ObjectId);
+    const saved = post.saves.includes(userId as unknown as ObjectId);
+    const { saves, ...halfPost } = post.toObject();
+    return {
+      liked,
+      saved,
+      ...halfPost,
+    };
+  });
+};
+
 const postsMediaStorage = multer.diskStorage({
   destination: (req, __, callback) => {
-    const userDir = `./src/uploads/${req.userId}`;
+    const userDir = `./src/uploads/${req.myId}`;
 
     if (!fs.existsSync("./src/uploads")) {
       fs.mkdirSync("./src/uploads");
@@ -24,12 +47,12 @@ const postsMediaStorage = multer.diskStorage({
     callback(null, `${userDir}/posts`);
   },
   filename: (req, file, callback) => {
-    const fileName = `${req.userId}_${Math.random()
+    const fileName = `${req.myId}_${Math.random()
       .toString()
       .replace("0.", "")
       .substring(0, 6)}_${Date.now()}.${file.originalname.split(".").pop()}`;
     req.on("error", () => {
-      const dest = `./src/uploads/${req.userId}/posts/${fileName}`;
+      const dest = `./src/uploads/${req.myId}/posts/${fileName}`;
       if (fs.existsSync(dest)) {
         fs.unlinkSync(dest);
       }
@@ -69,11 +92,11 @@ export const create = (req: Request, res: Response) => {
       const filesDest = files.map((file) => file.destination.slice(5) + "/" + file.filename);
 
       data.media.forEach((media, i) => (media.dest = filesDest[i]));
-      data.user = req.userId as unknown as mongoose.Schema.Types.ObjectId;
+      data.user = req.myId as unknown as mongoose.Schema.Types.ObjectId;
 
       const doc = new PostModel(data);
       const post = await doc.save();
-      const user = await UserModel.findOneAndUpdate({ _id: req.userId }, { $push: { posts: post._id } }).select([
+      const user = await UserModel.findOneAndUpdate({ _id: req.myId }, { $push: { posts: post._id } }).select([
         "username",
         "avatarDest",
       ]);
@@ -102,7 +125,7 @@ export const remove = async (req: Request, res: Response) => {
       });
     }
 
-    if (post.user.toString() !== req.userId) {
+    if (post.user.toString() !== req.myId) {
       return res.status(403).json({
         message: "No access!",
       });
@@ -115,7 +138,7 @@ export const remove = async (req: Request, res: Response) => {
       });
     }
     deletedPost.media.forEach((el) => fs.existsSync(`./src${el.dest}`) && fs.unlinkSync(`./src${el.dest}`));
-    await UserModel.findByIdAndUpdate(req.userId, { $pull: { saved: id, posts: id } });
+    await UserModel.findByIdAndUpdate(req.myId, { $pull: { saved: id, posts: id } });
     res.json({
       success: true,
     });
@@ -141,13 +164,12 @@ export const getUserPosts = async (req: Request, res: Response) => {
         pages,
       });
     }
-    
+
     const posts = await PostModel.find({ user: req.userId })
       .sort({ _id: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
-      .populate("user")
-      .select(["username", "avatarDest"])
+      .populate({ path: "user", select: ["username", "avatarDest"] })
       .exec();
 
     if (!posts) {
@@ -156,7 +178,100 @@ export const getUserPosts = async (req: Request, res: Response) => {
       });
     }
 
-    res.json({ posts, pages });
+    const newData = getResPosts(req.myId, posts);
+
+    res.json({ posts: newData, pages, postsCount });
+  } catch (error) {
+    res.status(400).json({
+      message: "The post didn't find",
+      error,
+    });
+  }
+};
+
+export const getUserSavedPosts = async (req: Request, res: Response) => {
+  try {
+    const page = Number(req.query.page) > 0 ? Number(req.query.page) : 1;
+    const limit = Number(req.query.limit) > 0 ? Number(req.query.limit) : 10;
+
+    const postsCount = await PostModel.countDocuments({
+      saves: {
+        $elemMatch: { $eq: req.myId },
+      },
+    });
+    const pages = Math.ceil(postsCount / limit);
+
+    const posts = await PostModel.find({ saves: { $elemMatch: { $eq: req.myId } } })
+      .sort({ _id: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate({ path: "user", select: ["username", "avatarDest"] })
+      .exec();
+
+    if (!posts) {
+      return res.status(404).json({
+        message: "The posts didn't find",
+      });
+    }
+
+    const newData = getResPosts(req.myId, posts);
+
+    res.json({ posts: newData, pages, postsCount });
+  } catch (error) {
+    res.status(400).json({
+      message: "The post didn't find",
+      error,
+    });
+  }
+};
+
+export const getUserReels = async (req: Request, res: Response) => {
+  try {
+    const page = Number(req.query.page) > 0 ? Number(req.query.page) : 1;
+    const limit = Number(req.query.limit) > 0 ? Number(req.query.limit) : 10;
+
+    const postsCount = await PostModel.countDocuments({
+      user: req.userId,
+      media: {
+        $size: 1,
+        $elemMatch: {
+          type: "video",
+        },
+      },
+    });
+    const pages = Math.ceil(postsCount / limit);
+
+    if (page > pages) {
+      return res.status(403).json({
+        message: "Page number is bigger than possible",
+        pages,
+      });
+    }
+
+    const posts = await PostModel.find({
+      user: req.userId,
+      media: {
+        $size: 1,
+        $elemMatch: {
+          type: "video",
+        },
+      },
+    })
+      .sort({ _id: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate({ path: "user", select: ["username", "avatarDest"] })
+      .exec();
+
+    if (!posts) {
+      return res.status(404).json({
+        message: "The posts didn't find",
+      });
+    }
+
+    const newData = getResPosts(req.myId, posts);
+
+    res.json({ posts: newData, pages, postsCount });
   } catch (error) {
     res.status(400).json({
       message: "The post didn't find",
@@ -188,7 +303,7 @@ export const addLike = async (req: Request, res: Response) => {
   try {
     const post = await PostModel.findByIdAndUpdate(
       req.params.id,
-      { $addToSet: { likes: req.userId } },
+      { $addToSet: { likes: req.myId } },
       { returnDocument: "after" },
     );
     if (!post) {
@@ -212,7 +327,7 @@ export const removeLike = async (req: Request, res: Response) => {
   try {
     const post = await PostModel.findByIdAndUpdate(
       req.params.id,
-      { $pull: { likes: req.userId } },
+      { $pull: { likes: req.myId } },
       { returnDocument: "after" },
     );
     if (!post) {
@@ -234,22 +349,26 @@ export const removeLike = async (req: Request, res: Response) => {
 
 export const addSaved = async (req: Request, res: Response) => {
   try {
-    const post = await PostModel.findByIdAndUpdate(req.params.id, { $inc: { saves: 1 } }, { returnDocument: "after" });
+    const post = await PostModel.findByIdAndUpdate(
+      req.params.id,
+      { $addToSet: { saves: req.myId } },
+      { returnDocument: "after" },
+    );
     if (!post) {
       return res.status(404).json({
         message: "Post didn't find",
       });
     }
-    const user = await UserModel.findByIdAndUpdate(
-      req.userId,
-      { $addToSet: { saved: req.params.id } },
-      { returnDocument: "after" },
-    );
-    if (!user) {
-      return res.status(404).json({
-        message: "User didn't find",
-      });
-    }
+    // const user = await UserModel.findByIdAndUpdate(
+    //   req.myId,
+    //   { $addToSet: { saved: req.params.id } },
+    //   { returnDocument: "after" },
+    // );
+    // if (!user) {
+    //   return res.status(404).json({
+    //     message: "User didn't find",
+    //   });
+    // }
 
     res.json({
       success: true,
@@ -264,23 +383,27 @@ export const addSaved = async (req: Request, res: Response) => {
 
 export const removeSaved = async (req: Request, res: Response) => {
   try {
-    const post = await PostModel.findByIdAndUpdate(req.params.id, { $inc: { saves: -1 } }, { returnDocument: "after" });
+    const post = await PostModel.findByIdAndUpdate(
+      req.params.id,
+      { $pull: { saves: req.myId } },
+      { returnDocument: "after" },
+    );
     if (!post) {
       return res.status(404).json({
         message: "Post didn't find",
       });
     }
 
-    const user = await UserModel.findByIdAndUpdate(
-      req.userId,
-      { $pull: { saved: req.params.id } },
-      { returnDocument: "after" },
-    );
-    if (!user) {
-      return res.status(404).json({
-        message: "User didn't find",
-      });
-    }
+    // const user = await UserModel.findByIdAndUpdate(
+    //   req.myId,
+    //   { $pull: { saved: req.params.id } },
+    //   { returnDocument: "after" },
+    // );
+    // if (!user) {
+    //   return res.status(404).json({
+    //     message: "User didn't find",
+    //   });
+    // }
 
     res.json({
       success: true,
@@ -301,7 +424,7 @@ export const edit = async (req: Request, res: Response) => {
         message: "Post didn't find",
       });
     }
-    if (post.user.toString() !== req.userId) {
+    if (post.user.toString() !== req.myId) {
       return res.status(403).json({
         message: "No access!",
       });

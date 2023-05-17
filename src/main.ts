@@ -14,6 +14,7 @@ import {
 import { handleValidationErrors, checkAuth } from "./utils/index.js";
 
 import { UserController, PostController } from "./controllers/index.js";
+import getUserId from "./utils/getUserId.js";
 
 const app: Express = express();
 const server = createServer(app);
@@ -59,7 +60,9 @@ app.get("/posts/:id", checkAuth, PostController.getOne);
 app.delete("/posts/:id", checkAuth, PostController.remove);
 app.patch("/posts/:id", checkAuth, postEditValidation, handleValidationErrors, PostController.edit);
 
-app.get("/user/posts", checkAuth, PostController.getUserPosts);
+app.get("/user/posts/:username", checkAuth, getUserId, PostController.getUserPosts);
+app.get("/user/reels/:username", checkAuth, getUserId, PostController.getUserReels);
+app.get("/user/saved", checkAuth, PostController.getUserSavedPosts);
 
 app.post("/posts/like/:id", checkAuth, PostController.addLike);
 app.delete("/posts/like/:id", checkAuth, PostController.removeLike);
