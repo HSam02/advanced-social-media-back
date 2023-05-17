@@ -42,7 +42,7 @@ export const checkValidation = oneOf([
 ]);
 
 export const postCreateValidation = [
-  body("text", "Invalid text").optional().isString(),
+  body("text", "Invalid text").optional().isString().isLength({ max: 2200 }),
   check("aspect", "Invalid aspect").isNumeric(),
   body("hideComments", "Invalid hideComments").isBoolean(),
   body("hideLikes", "Invalid hideLikes").isBoolean(),
@@ -50,4 +50,10 @@ export const postCreateValidation = [
   body("image.*.dest", "Invalid dest").isString(),
   body("image.*.type", "Invalid type").isIn(["video", "image"]),
   body("image.*.styles.transform", "Invalid type").isString(),
+];
+
+export const postEditValidation = [
+  body("text", "Invalid text").optional().isString().isLength({ max: 2200 }),
+  body("hideLikes", "Only boolean value").optional().isBoolean(),
+  body("hideComments", "Only boolean value").optional().isBoolean(),
 ];

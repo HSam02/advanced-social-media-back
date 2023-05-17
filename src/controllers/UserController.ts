@@ -7,7 +7,7 @@ import UserModel, { IUser, IUserSchema } from "../models/user.js";
 
 const avatarImageStorage = multer.diskStorage({
   destination: (req, __, callback) => {
-    const userDir = `./src/uploads/${req.userId}`;
+    const userDir = `./src/uploads/${req.myId}`;
 
     if (!fs.existsSync("./src/uploads")) {
       fs.mkdirSync("./src/uploads");
@@ -24,7 +24,7 @@ const avatarImageStorage = multer.diskStorage({
       .split(".")
       .pop()}`;
     req.on("error", () => {
-      const dest = `./src/uploads/${req.userId}/${fileName}`;
+      const dest = `./src/uploads/${req.myId}/${fileName}`;
       if (fs.existsSync(dest)) {
         fs.unlinkSync(dest);
       }
@@ -100,9 +100,9 @@ export const login = async (req: Request, res: Response) => {
     const user = await UserModel.findOne({
       $or: [{ email: login }, { username: login }],
     })
-      .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
-      .populate({ path: "saved", populate: { path: "user", select: ["username", "avatarDest"] } })
-      .exec();
+      // .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
+      // .populate({ path: "saved", populate: { path: "user", select: ["username", "avatarDest"] } })
+      // .exec();
 
     if (!user) {
       return res.status(403).json({
@@ -120,8 +120,8 @@ export const login = async (req: Request, res: Response) => {
 
     const userData: Partial<IUser> = user.toObject();
     delete userData["passwordHash"];
-    userData.posts?.reverse();
-    userData.saved?.reverse();
+    // userData.posts?.reverse();
+    // userData.saved?.reverse();
 
     const token = jwt.sign(
       {
@@ -144,11 +144,11 @@ export const login = async (req: Request, res: Response) => {
 
 export const getUser = async (req: Request, res: Response) => {
   try {
-    const user = await UserModel.findById<IUserSchema>(req.userId)
+    const user = await UserModel.findById<IUserSchema>(req.myId)
       .select("-passwordHash")
-      .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
-      .populate({ path: "saved", populate: { path: "user", select: ["username", "avatarDest"] } })
-      .exec();
+      // .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
+      // .populate({ path: "saved", populate: { path: "user", select: ["username", "avatarDest"] } })
+      // .exec();
 
     if (!user) {
       return res.status(404).json({
@@ -156,8 +156,8 @@ export const getUser = async (req: Request, res: Response) => {
       });
     }
 
-    user.saved.reverse();
-    user.posts.reverse();
+    // user.saved.reverse();
+    // user.posts.reverse();
     res.json(user);
   } catch (error) {
     res.status(500).json({
@@ -196,9 +196,9 @@ export const uploadAvatar = (req: Request, res: Response) => {
         });
       }
       const dest = req.file.destination.slice(5) + "/" + req.file.filename;
-      const oldUser = await UserModel.findById(req.userId).select("avatarDest");
+      const oldUser = await UserModel.findById(req.myId).select("avatarDest");
       const user = await UserModel.findOneAndUpdate(
-        { _id: req.userId },
+        { _id: req.myId },
         { $set: { avatarDest: dest } },
         { returnDocument: "after" },
       );
@@ -222,7 +222,7 @@ export const uploadAvatar = (req: Request, res: Response) => {
 
 export const removeAvatar = async (req: Request, res: Response) => {
   try {
-    const user = await UserModel.findByIdAndUpdate({ _id: req.userId }, { $set: { avatarDest: "" } }).select(
+    const user = await UserModel.findByIdAndUpdate({ _id: req.myId }, { $set: { avatarDest: "" } }).select(
       "avatarDest",
     );
     if (!user) {

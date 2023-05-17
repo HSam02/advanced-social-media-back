@@ -18,7 +18,7 @@ export interface IPostSchema {
   media: IMedia[];
   aspect: number;
   likes: mongoose.Schema.Types.ObjectId[];
-  saves: number;
+  saves: mongoose.Schema.Types.ObjectId[];
   text: string;
   comments: mongoose.Schema.Types.ObjectId[];
   user: mongoose.Schema.Types.ObjectId;
@@ -45,10 +45,13 @@ const PostSchema = new mongoose.Schema<IPostSchema>(
         default: [],
       },
     ],
-    saves: {
-      type: Number,
-      default: 0,
-    },
+    saves: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: [],
+      },
+    ],
     comments: [
       {
         type: mongoose.Schema.Types.ObjectId,
