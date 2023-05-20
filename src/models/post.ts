@@ -17,8 +17,8 @@ export interface IPostSchema {
   readonly _id: mongoose.Schema.Types.ObjectId;
   media: IMedia[];
   aspect: number;
-  likes: mongoose.Schema.Types.ObjectId[];
-  saves: mongoose.Schema.Types.ObjectId[];
+  likes: { user: mongoose.Schema.Types.ObjectId; date: number }[];
+  saves: { user: mongoose.Schema.Types.ObjectId; date: number }[];
   text: string;
   comments: mongoose.Schema.Types.ObjectId[];
   user: mongoose.Schema.Types.ObjectId;
@@ -40,15 +40,33 @@ const PostSchema = new mongoose.Schema<IPostSchema>(
     },
     likes: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        type: {
+          _id: false,
+          user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+          },
+          date: {
+            type: Number,
+            default: () => Date.now(),
+          },
+        },
         default: [],
       },
     ],
     saves: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
+        type: {
+          _id: false,
+          user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+          },
+          date: {
+            type: Number,
+            default: () => Date.now(),
+          },
+        },
         default: [],
       },
     ],
@@ -93,5 +111,18 @@ const PostSchema = new mongoose.Schema<IPostSchema>(
     timestamps: true,
   },
 );
+
+// PostSchema.pre("update", function (next) {
+//   const currentDate = Date.now();
+
+//   this.saves = this.saves.map((save) => {
+//     return {
+//       user: save.user,
+//       date: currentDate,
+//     };
+//   });
+
+//   next();
+// });
 
 export default mongoose.model<IPostSchema>("Post", PostSchema);
