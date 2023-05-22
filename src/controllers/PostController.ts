@@ -195,16 +195,13 @@ export const getUserSavedPosts = async (req: Request, res: Response) => {
     const limit = Number(req.query.limit) > 0 ? Number(req.query.limit) : 10;
 
     const postsCount = await PostModel.countDocuments({
-      saves: {
-        $elemMatch: { $eq: { user: req.myId } },
-      },
+      "saves.user": req.myId,
     });
+
     const pages = Math.ceil(postsCount / limit);
 
     const posts = await PostModel.find({
-      saves: {
-        $elemMatch: { $eq: { user: req.myId } },
-      },
+      "saves.user": req.myId,
     })
       .sort({ "saves.date": -1 })
       .skip((page - 1) * limit)
