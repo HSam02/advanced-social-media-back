@@ -17,8 +17,8 @@ const getResPosts = (
   >[],
 ) => {
   return posts.map((post) => {
-    const liked = post.likes.includes(userId as unknown as ObjectId);
-    const saved = post.saves.includes(userId as unknown as ObjectId);
+    const liked = Boolean(post.likes.find((like) => like.user.toString() === userId));
+    const saved = Boolean(post.saves.find((save) => save.user.toString() === userId));
     const { saves, ...halfPost } = post.toObject();
     return {
       liked,
@@ -166,7 +166,7 @@ export const getUserPosts = async (req: Request, res: Response) => {
     }
 
     const posts = await PostModel.find({ user: req.userId })
-      .sort({ _id: -1 })
+      .sort("-createdAt")
       .skip((page - 1) * limit)
       .limit(limit)
       .populate({ path: "user", select: ["username", "avatarDest"] })
@@ -195,14 +195,15 @@ export const getUserSavedPosts = async (req: Request, res: Response) => {
     const limit = Number(req.query.limit) > 0 ? Number(req.query.limit) : 10;
 
     const postsCount = await PostModel.countDocuments({
-      saves: {
-        $elemMatch: { $eq: req.myId },
-      },
+      "saves.user": req.myId,
     });
+
     const pages = Math.ceil(postsCount / limit);
 
-    const posts = await PostModel.find({ saves: { $elemMatch: { $eq: req.myId } } })
-      .sort({ _id: -1 })
+    const posts = await PostModel.find({
+      "saves.user": req.myId,
+    })
+      .sort({ "saves.date": -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .populate({ path: "user", select: ["username", "avatarDest"] })
@@ -257,7 +258,7 @@ export const getUserReels = async (req: Request, res: Response) => {
         },
       },
     })
-      .sort({ _id: -1 })
+      .sort("-createdAt")
       .skip((page - 1) * limit)
       .limit(limit)
       .populate({ path: "user", select: ["username", "avatarDest"] })
@@ -303,7 +304,7 @@ export const addLike = async (req: Request, res: Response) => {
   try {
     const post = await PostModel.findByIdAndUpdate(
       req.params.id,
-      { $addToSet: { likes: req.myId } },
+      { $addToSet: { likes: { user: req.myId } } },
       { returnDocument: "after" },
     );
     if (!post) {
@@ -327,7 +328,7 @@ export const removeLike = async (req: Request, res: Response) => {
   try {
     const post = await PostModel.findByIdAndUpdate(
       req.params.id,
-      { $pull: { likes: req.myId } },
+      { $pull: { likes: { user: req.myId } } },
       { returnDocument: "after" },
     );
     if (!post) {
@@ -351,7 +352,7 @@ export const addSaved = async (req: Request, res: Response) => {
   try {
     const post = await PostModel.findByIdAndUpdate(
       req.params.id,
-      { $addToSet: { saves: req.myId } },
+      { $addToSet: { saves: { user: req.myId } } },
       { returnDocument: "after" },
     );
     if (!post) {
@@ -359,16 +360,6 @@ export const addSaved = async (req: Request, res: Response) => {
         message: "Post didn't find",
       });
     }
-    // const user = await UserModel.findByIdAndUpdate(
-    //   req.myId,
-    //   { $addToSet: { saved: req.params.id } },
-    //   { returnDocument: "after" },
-    // );
-    // if (!user) {
-    //   return res.status(404).json({
-    //     message: "User didn't find",
-    //   });
-    // }
 
     res.json({
       success: true,
@@ -385,7 +376,7 @@ export const removeSaved = async (req: Request, res: Response) => {
   try {
     const post = await PostModel.findByIdAndUpdate(
       req.params.id,
-      { $pull: { saves: req.myId } },
+      { $pull: { saves: { user: req.myId } } },
       { returnDocument: "after" },
     );
     if (!post) {
@@ -393,17 +384,6 @@ export const removeSaved = async (req: Request, res: Response) => {
         message: "Post didn't find",
       });
     }
-
-    // const user = await UserModel.findByIdAndUpdate(
-    //   req.myId,
-    //   { $pull: { saved: req.params.id } },
-    //   { returnDocument: "after" },
-    // );
-    // if (!user) {
-    //   return res.status(404).json({
-    //     message: "User didn't find",
-    //   });
-    // }
 
     res.json({
       success: true,
