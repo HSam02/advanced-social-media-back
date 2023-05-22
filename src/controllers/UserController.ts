@@ -4,6 +4,7 @@ import bcrypt from "bcrypt";
 import multer from "multer";
 import fs from "fs";
 import UserModel, { IUser, IUserSchema } from "../models/user.js";
+import PostModel from "../models/post.js";
 
 const avatarImageStorage = multer.diskStorage({
   destination: (req, __, callback) => {
@@ -99,10 +100,10 @@ export const login = async (req: Request, res: Response) => {
     const { login, password } = <IloginUser>req.body;
     const user = await UserModel.findOne({
       $or: [{ email: login }, { username: login }],
-    })
-      // .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
-      // .populate({ path: "saved", populate: { path: "user", select: ["username", "avatarDest"] } })
-      // .exec();
+    });
+    // .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
+    // .populate({ path: "saved", populate: { path: "user", select: ["username", "avatarDest"] } })
+    // .exec();
 
     if (!user) {
       return res.status(403).json({
@@ -133,7 +134,9 @@ export const login = async (req: Request, res: Response) => {
       },
     );
 
-    res.json({ user: userData, token });
+    const postsCount = await PostModel.countDocuments({ user: userData._id });
+
+    res.json({ user: { ...userData, postsCount }, token });
   } catch (error) {
     res.status(500).json({
       message: "Please, try later.",
@@ -144,21 +147,19 @@ export const login = async (req: Request, res: Response) => {
 
 export const getUser = async (req: Request, res: Response) => {
   try {
-    const user = await UserModel.findById<IUserSchema>(req.myId)
-      .select("-passwordHash")
-      // .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
-      // .populate({ path: "saved", populate: { path: "user", select: ["username", "avatarDest"] } })
-      // .exec();
+    const user = await UserModel.findById(req.myId).select("-passwordHash");
+    // .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
+    // .populate({ path: "saved", populate: { path: "user", select: ["username", "avatarDest"] } })
+    // .exec();
 
     if (!user) {
       return res.status(404).json({
         message: "User didn't find",
       });
     }
+    const postsCount = await PostModel.countDocuments({ user: user._id });
 
-    // user.saved.reverse();
-    // user.posts.reverse();
-    res.json(user);
+    res.json({ ...user.toObject(), postsCount });
   } catch (error) {
     res.status(500).json({
       message: "Can't get info",
