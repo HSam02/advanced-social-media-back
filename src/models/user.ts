@@ -17,9 +17,7 @@ export interface IUserSchema {
   bio?: string;
   followers: mongoose.Schema.Types.ObjectId[];
   following: mongoose.Schema.Types.ObjectId[];
-  // posts: mongoose.Schema.Types.ObjectId[];
-  // saved: mongoose.Schema.Types.ObjectId[];
-  chats: mongoose.Schema.Types.ObjectId[];
+  // chats: mongoose.Schema.Types.ObjectId[];
   notifications: mongoose.Schema.Types.ObjectId[];
 }
 
@@ -56,27 +54,13 @@ const UserSchema = new mongoose.Schema<IUserSchema>(
         default: [],
       },
     ],
-    // posts: [
+    // chats: [
     //   {
     //     type: mongoose.Schema.Types.ObjectId,
-    //     ref: "Post",
+    //     ref: "Chat",
     //     default: [],
     //   },
     // ],
-    // saved: [
-    //   {
-    //     type: mongoose.Schema.Types.ObjectId,
-    //     ref: "Post",
-    //     default: [],
-    //   },
-    // ],
-    chats: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Chat",
-        default: [],
-      },
-    ],
     privateAccount: {
       type: Boolean,
       default: false,
@@ -91,7 +75,6 @@ const UserSchema = new mongoose.Schema<IUserSchema>(
   },
   {
     timestamps: true,
-    // get: (v) => v.toDateString()
   },
 );
 

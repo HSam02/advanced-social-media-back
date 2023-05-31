@@ -13,7 +13,7 @@ import {
 } from "./validations.js";
 import { handleValidationErrors, checkAuth } from "./utils/index.js";
 
-import { UserController, PostController } from "./controllers/index.js";
+import { UserController, PostController, CommentController } from "./controllers/index.js";
 import getUserId from "./utils/getUserId.js";
 
 const app: Express = express();
@@ -69,5 +69,15 @@ app.delete("/posts/like/:id", checkAuth, PostController.removeLike);
 
 app.post("/posts/save/:id", checkAuth, PostController.addSaved);
 app.delete("/posts/save/:id", checkAuth, PostController.removeSaved);
+
+app.post("/comment/:id", checkAuth, CommentController.create);
+app.delete("/comment/:id", checkAuth, CommentController.remove);
+app.get("/comment/:id", checkAuth, CommentController.getPostComments);
+
+app.post("/reply/:id", checkAuth, CommentController.reply);
+app.get("/reply/:id", checkAuth, CommentController.getCommentReplies);
+
+app.post("/comment/like/:id", checkAuth, CommentController.addLike);
+app.delete("/comment/like/:id", checkAuth, CommentController.removeLike);
 
 server.listen(port || 5555, () => console.log(`Server started on port ${port}`));

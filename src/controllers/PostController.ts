@@ -1,11 +1,35 @@
 import { Request, Response } from "express";
-import mongoose, { ObjectId } from "mongoose";
+import mongoose from "mongoose";
 import multer from "multer";
 import fs from "fs";
-import PostModel, { IPost, IPostSchema } from "../models/post.js";
-import UserModel, { IUserSchema } from "../models/user.js";
+import PostModel, { IPostSchema } from "../models/post.js";
+import UserModel from "../models/user.js";
+import { deleteCommentsByPostId, getCommentsCount } from "./CommentController.js";
 
-const getResPosts = (
+// const getResPosts = (
+//   userId: string | undefined,
+//   posts: Omit<
+//     mongoose.Document<unknown, any, IPostSchema> &
+//       IPostSchema &
+//       Required<{
+//         _id: mongoose.Schema.Types.ObjectId;
+//       }>,
+//     never
+//   >[],
+// ) => {
+//   return posts.map((post) => {
+//     const liked = Boolean(post.likes.find((like) => like.user.toString() === userId));
+//     const saved = Boolean(post.saves.find((save) => save.user.toString() === userId));
+//     const { saves, ...halfPost } = post.toObject();
+//     return {
+//       liked,
+//       saved,
+//       ...halfPost,
+//     };
+//   });
+// };
+
+const getResPosts = async (
   userId: string | undefined,
   posts: Omit<
     mongoose.Document<unknown, any, IPostSchema> &
@@ -16,16 +40,28 @@ const getResPosts = (
     never
   >[],
 ) => {
-  return posts.map((post) => {
-    const liked = Boolean(post.likes.find((like) => like.user.toString() === userId));
-    const saved = Boolean(post.saves.find((save) => save.user.toString() === userId));
-    const { saves, ...halfPost } = post.toObject();
-    return {
-      liked,
-      saved,
-      ...halfPost,
-    };
-  });
+  try {
+    const updatedPosts = await Promise.all(
+      posts.map(async (post) => {
+        const liked = Boolean(post.likes.find((like) => like.user.toString() === userId));
+        const saved = Boolean(post.saves.find((save) => save.user.toString() === userId));
+        const commentsCount = await getCommentsCount(post._id.toString());
+        const { saves, ...halfPost } = post.toObject();
+
+        return {
+          liked,
+          saved,
+          commentsCount,
+          ...halfPost,
+        };
+      }),
+    );
+
+    return updatedPosts;
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
 };
 
 const postsMediaStorage = multer.diskStorage({
@@ -63,6 +99,7 @@ const postsMediaStorage = multer.diskStorage({
     callback(null, fileName);
   },
 });
+
 const uploadPostMedia = multer({
   storage: postsMediaStorage,
   limits: { fileSize: 20 * 1024 * 1024 },
@@ -96,10 +133,7 @@ export const create = (req: Request, res: Response) => {
 
       const doc = new PostModel(data);
       const post = await doc.save();
-      const user = await UserModel.findOneAndUpdate({ _id: req.myId }, { $push: { posts: post._id } }).select([
-        "username",
-        "avatarDest",
-      ]);
+      const user = await UserModel.findOneAndUpdate({ _id: req.myId }).select(["username", "avatarDest"]);
 
       res.json({
         ...post.toObject(),
@@ -138,7 +172,7 @@ export const remove = async (req: Request, res: Response) => {
       });
     }
     deletedPost.media.forEach((el) => fs.existsSync(`./src${el.dest}`) && fs.unlinkSync(`./src${el.dest}`));
-    await UserModel.findByIdAndUpdate(req.myId, { $pull: { saved: id, posts: id } });
+    await deleteCommentsByPostId(id);
     res.json({
       success: true,
     });
@@ -178,7 +212,7 @@ export const getUserPosts = async (req: Request, res: Response) => {
       });
     }
 
-    const newData = getResPosts(req.myId, posts);
+    const newData = await getResPosts(req.myId, posts);
 
     res.json({ posts: newData, pages, postsCount });
   } catch (error) {
@@ -215,7 +249,7 @@ export const getUserSavedPosts = async (req: Request, res: Response) => {
       });
     }
 
-    const newData = getResPosts(req.myId, posts);
+    const newData = await getResPosts(req.myId, posts);
 
     res.json({ posts: newData, pages, postsCount });
   } catch (error) {
@@ -270,7 +304,7 @@ export const getUserReels = async (req: Request, res: Response) => {
       });
     }
 
-    const newData = getResPosts(req.myId, posts);
+    const newData = await getResPosts(req.myId, posts);
 
     res.json({ posts: newData, pages, postsCount });
   } catch (error) {
