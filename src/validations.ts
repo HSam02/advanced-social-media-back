@@ -1,4 +1,4 @@
-import { body, check, oneOf } from "express-validator";
+import { body, check, oneOf } from "express-validator"; //joi
 
 export const registerValidation = [
   body("email", "Invalid email").isEmail(),

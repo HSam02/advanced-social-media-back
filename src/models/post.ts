@@ -45,6 +45,7 @@ const PostSchema = new mongoose.Schema<IPostSchema>(
           user: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
+            required: true,
           },
           date: {
             type: Number,
@@ -57,15 +58,16 @@ const PostSchema = new mongoose.Schema<IPostSchema>(
     saves: [
       {
         type: {
-          _id: false,
+          // _id: true,
           user: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "User",
+            required: true,
           },
-          date: {
-            type: Number,
-            default: () => Date.now(),
-          },
+          // date: {
+          //   type: Number,
+          //   default: () => Date.now(),
+          // },
         },
         default: [],
       },
