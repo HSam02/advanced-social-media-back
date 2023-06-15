@@ -112,22 +112,22 @@ export const remove = async (req: Request, res: Response) => {
 
 export const getPostComments = async (req: Request, res: Response) => {
   try {
-    const page = Number(req.query.page) > 0 ? Number(req.query.page) : 1;
+    const lastId = req.query.lastId;
     const limit = Number(req.query.limit) > 0 ? Number(req.query.limit) : 10;
 
     const commentsCount = await CommentModel.countDocuments({ postId: req.params.id, parentId: undefined });
-    const pages = Math.ceil(commentsCount / limit) || 1;
 
-    if (page > pages) {
-      return res.status(403).json({
-        message: "Page number is bigger than possible",
-        pages,
-      });
+    const query: { postId?: string; parentId: undefined; _id?: { $lt: string } } = {
+      postId: req.params.id,
+      parentId: undefined,
+    };
+
+    if (lastId) {
+      query._id = { $lt: lastId as string };
     }
 
-    const comments = await CommentModel.find({ postId: req.params.id, parentId: undefined })
+    const comments = await CommentModel.find(query)
       .sort("-createdAt")
-      .skip((page - 1) * limit)
       .limit(limit)
       .populate({ path: "user", select: ["username", "avatarDest"] })
       .exec();
@@ -157,7 +157,6 @@ export const getPostComments = async (req: Request, res: Response) => {
     res.json({
       postId: req.params.id,
       comments: commentsWithRepliesCount,
-      pages,
       commentsCount,
     });
   } catch (error) {
@@ -170,22 +169,21 @@ export const getPostComments = async (req: Request, res: Response) => {
 
 export const getCommentReplies = async (req: Request, res: Response) => {
   try {
-    const page = Number(req.query.page) > 0 ? Number(req.query.page) : 1;
+    const lastId = req.query.lastId;
     const limit = Number(req.query.limit) > 0 ? Number(req.query.limit) : 10;
 
     const repliesCount = await CommentModel.countDocuments({ parentId: req.params.id });
-    const pages = Math.ceil(repliesCount / limit) || 1;
 
-    if (page > pages) {
-      return res.status(403).json({
-        message: "Page number is bigger than possible",
-        pages,
-      });
+    const query: { parentId?: string; _id?: { $lt: string } } = {
+      parentId: req.params.id,
+    };
+
+    if (lastId) {
+      query._id = { $lt: lastId as string };
     }
 
-    const replies = await CommentModel.find({ parentId: req.params.id })
+    const replies = await CommentModel.find(query)
       .sort("-createdAt")
-      .skip((page - 1) * limit)
       .limit(limit)
       .populate({ path: "user", select: ["username", "avatarDest"] })
       .exec();
@@ -200,8 +198,7 @@ export const getCommentReplies = async (req: Request, res: Response) => {
 
     res.json({
       parentId: req.params.id,
-      replies: repliesWithLikedField,
-      pages,
+      replies: repliesWithLikedField.reverse(),
       repliesCount,
     });
   } catch (error) {
