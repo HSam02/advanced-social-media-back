@@ -124,6 +124,7 @@ export const create = (req: Request, res: Response) => {
     }
     try {
       const data: IPostSchema = JSON.parse(req.body.data);
+      data.text = data.text.trim();
 
       const files = req.files as Express.Multer.File[];
       const filesDest = files.map((file) => file.destination.slice(5) + "/" + file.filename);
@@ -451,7 +452,11 @@ export const edit = async (req: Request, res: Response) => {
         message: "No access!",
       });
     }
-    await PostModel.findByIdAndUpdate(req.params.id, { $set: req.body });
+    const data = req.body;
+    if (data.text) {
+      data.text = data.text.trim();
+    }
+    await PostModel.findByIdAndUpdate(req.params.id, { $set: data });
     res.json({
       success: true,
     });

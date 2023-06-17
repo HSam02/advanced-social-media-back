@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { Schema, Document } from "mongoose";
 import CommentModel, { ICommentSchema } from "../models/comment.js";
 import UserModel from "../models/user.js";
+import PostModel from "../models/post.js";
 
 const getLikedField = (
   userId: string | undefined,
@@ -43,7 +44,7 @@ export const getCommentsCount = async (postId: string) => {
 export const create = async (req: Request, res: Response) => {
   try {
     const doc = new CommentModel({
-      text: req.body.text,
+      text: req.body.text.trim(),
       user: req.myId,
       postId: req.params.id,
     });
@@ -67,7 +68,7 @@ export const reply = async (req: Request, res: Response) => {
       });
     }
     const doc = new CommentModel({
-      text: req.body.text,
+      text: req.body.text.trim(),
       user: req.myId,
       parentId: req.params.id,
       postId: comment.postId,
@@ -112,6 +113,13 @@ export const remove = async (req: Request, res: Response) => {
 
 export const getPostComments = async (req: Request, res: Response) => {
   try {
+    const post = await PostModel.findById(req.params.id).select("hideComments");
+    if (!post || post.hideComments) {
+      return res.status(400).json({
+        message: "Couldn't get comments",
+      });
+    }
+
     const lastId = req.query.lastId;
     const limit = Number(req.query.limit) > 0 ? Number(req.query.limit) : 10;
 
