@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import fs from "fs";
-import UserModel, { IUser, IUserSchema } from "../models/user.js";
+import UserModel, { IUser } from "../models/user.js";
 import PostModel from "../models/post.js";
 
 const avatarImageStorage = multer.diskStorage({

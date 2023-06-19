@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { Schema, Document } from "mongoose";
 import CommentModel, { ICommentSchema } from "../models/comment.js";
 import UserModel from "../models/user.js";
-import PostModel from "../models/post.js";
+import PostModel, { IPost } from "../models/post.js";
 
 const getLikedField = (
   userId: string | undefined,
@@ -32,13 +32,29 @@ export const deleteCommentsByPostId = async (postId: string) => {
   }
 };
 
-export const getCommentsCount = async (postId: string) => {
-  try {
-    const commentsCount = await CommentModel.countDocuments({ postId });
-    return commentsCount;
-  } catch (error) {
-    return 0;
-  }
+// export const getCommentsCount = async (postId: string) => {
+//   try {
+//     const commentsCount = await CommentModel.countDocuments({ postId });
+//     return commentsCount;
+//   } catch (error) {
+//     return 0;
+//   }
+// };
+
+export const getPostsWithCommentsCount = async (posts: IPost[] | { [key: string]: any }[]) => {
+  const postIds = posts.map((post) => post._id);
+  const commentCounts = await CommentModel.aggregate([
+    { $match: { postId: { $in: postIds } } },
+    { $group: { _id: "$postId", count: { $sum: 1 } } },
+  ]);
+
+  return posts.map((post) => {
+    const commentsCount = commentCounts.find((count) => count._id.toString() === post._id.toString());
+    return {
+      ...post,
+      commentsCount: commentsCount ? (commentsCount.count as number) : 0,
+    };
+  });
 };
 
 export const create = async (req: Request, res: Response) => {
