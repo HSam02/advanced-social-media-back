@@ -134,11 +134,9 @@ export const create = (req: Request, res: Response) => {
 
       const doc = new PostModel(data);
       const post = await doc.save();
-      const user = await UserModel.findOneAndUpdate({ _id: req.myId }).select(["username", "avatarDest"]);
 
       res.json({
         ...post.toObject(),
-        user,
       });
     } catch (error) {
       res.status(400).json({

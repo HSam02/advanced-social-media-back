@@ -101,9 +101,6 @@ export const login = async (req: Request, res: Response) => {
     const user = await UserModel.findOne({
       $or: [{ email: login }, { username: login }],
     });
-    // .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
-    // .populate({ path: "saved", populate: { path: "user", select: ["username", "avatarDest"] } })
-    // .exec();
 
     if (!user) {
       return res.status(403).json({
@@ -121,8 +118,6 @@ export const login = async (req: Request, res: Response) => {
 
     const userData: Partial<IUser> = user.toObject();
     delete userData["passwordHash"];
-    // userData.posts?.reverse();
-    // userData.saved?.reverse();
 
     const token = jwt.sign(
       {
@@ -148,9 +143,6 @@ export const login = async (req: Request, res: Response) => {
 export const getUser = async (req: Request, res: Response) => {
   try {
     const user = await UserModel.findById(req.myId).select("-passwordHash");
-    // .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
-    // .populate({ path: "saved", populate: { path: "user", select: ["username", "avatarDest"] } })
-    // .exec();
 
     if (!user) {
       return res.status(404).json({
@@ -240,6 +232,29 @@ export const removeAvatar = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(400).json({
       message: "Avatar didn't removed",
+      error,
+    });
+  }
+};
+
+export const searchUser = async (req: Request, res: Response) => {
+  try {
+    const lastId = req.query.lastId;
+
+    const text = req.params.text;
+    const regex = { $regex: new RegExp(text, "i") };
+    const query: { [key: string]: any } = { $or: [{ username: regex }, { fullname: regex }] };
+    const usersCount = await UserModel.countDocuments(query);
+
+    if (lastId) {
+      query._id = { $gt: lastId as string };
+    }
+
+    const users = await UserModel.find(query).select(["username", "avatarDest", "fullname"]).limit(50);
+    res.json({ users, usersCount });
+  } catch (error) {
+    res.status(400).json({
+      message: "Server Error",
       error,
     });
   }

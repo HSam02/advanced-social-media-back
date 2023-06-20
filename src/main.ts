@@ -13,7 +13,7 @@ import {
 } from "./validations.js";
 import { handleValidationErrors, checkAuth } from "./utils/index.js";
 
-import { UserController, PostController, CommentController } from "./controllers/index.js";
+import { UserController, PostController, CommentController, RecentSearchesController } from "./controllers/index.js";
 import getUserId from "./utils/getUserId.js";
 
 const app: Express = express();
@@ -47,7 +47,12 @@ app.post("/auth/check", checkValidation, handleValidationErrors, UserController.
 app.post("/auth/avatar", checkAuth, UserController.uploadAvatar);
 app.delete("/auth/avatar", checkAuth, UserController.removeAvatar);
 
-// app.get("/user/posts", checkAuth, PostController.getUserPosts);
+app.get("/search/:text", checkAuth, UserController.searchUser);
+
+app.post("/recent/search/:id", checkAuth, RecentSearchesController.addToRecent);
+app.get("/recent/search", checkAuth, RecentSearchesController.getRecents);
+app.delete("/recent/search", checkAuth, RecentSearchesController.removeAll);
+app.delete("/recent/search/:id", checkAuth, RecentSearchesController.removeRecent);
 
 app.post(
   "/posts",

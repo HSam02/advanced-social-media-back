@@ -17,6 +17,7 @@ export interface IUserSchema {
   bio?: string;
   followers: mongoose.Schema.Types.ObjectId[];
   following: mongoose.Schema.Types.ObjectId[];
+  recentSearch: mongoose.Schema.Types.ObjectId[];
   // chats: mongoose.Schema.Types.ObjectId[];
   notifications: mongoose.Schema.Types.ObjectId[];
 }
@@ -48,6 +49,13 @@ const UserSchema = new mongoose.Schema<IUserSchema>(
       },
     ],
     following: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: [],
+      },
+    ],
+    recentSearch: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
