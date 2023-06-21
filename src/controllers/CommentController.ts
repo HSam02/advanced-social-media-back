@@ -104,14 +104,14 @@ export const remove = async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
 
-    const comment = await CommentModel.findById(id);
+    const comment = await CommentModel.findById(id).populate("postId");
     if (!comment) {
       return res.status(400).json({
         message: "Comment didn't find",
       });
     }
 
-    if (comment.user.toString() !== req.myId) {
+    if (comment.user.toString() !== req.myId && (comment.postId as unknown as IPost).user.toString() !== req.myId) {
       return res.status(403).json({
         message: "No access!",
       });
