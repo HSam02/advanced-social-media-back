@@ -42,10 +42,12 @@ app.use("/uploads", express.static("./src/uploads"));
 
 app.post("/auth/register", registerValidation, handleValidationErrors, UserController.register);
 app.post("/auth/login", loginValidation, handleValidationErrors, UserController.login);
-app.get("/auth/me", checkAuth, UserController.getUser);
+app.get("/auth/me", checkAuth, UserController.getMe);
 app.post("/auth/check", checkValidation, handleValidationErrors, UserController.checkIsFree);
 app.post("/auth/avatar", checkAuth, UserController.uploadAvatar);
 app.delete("/auth/avatar", checkAuth, UserController.removeAvatar);
+
+app.get("/user/:username", checkAuth, UserController.getUser);
 
 app.get("/search/:text", checkAuth, UserController.searchUser);
 

@@ -140,7 +140,7 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-export const getUser = async (req: Request, res: Response) => {
+export const getMe = async (req: Request, res: Response) => {
   try {
     const user = await UserModel.findById(req.myId).select("-passwordHash");
 
@@ -252,6 +252,32 @@ export const searchUser = async (req: Request, res: Response) => {
 
     const users = await UserModel.find(query).select(["username", "avatarDest", "fullname"]).limit(50);
     res.json({ users, usersCount });
+  } catch (error) {
+    res.status(400).json({
+      message: "Server Error",
+      error,
+    });
+  }
+};
+
+export const getUser = async (req: Request, res: Response) => {
+  try {
+    const user = await UserModel.findOne({ username: req.params.username }).select([
+      "username",
+      "avatarDest",
+      "fullname",
+      "bio",
+      "privateAccaunt",
+    ]);
+    if (!user) {
+      return res.status(404).json({
+        message: "User didn't find",
+      });
+    }
+
+    const postsCount = await PostModel.countDocuments({ user: user._id });
+
+    res.json({ ...user.toObject(), postsCount });
   } catch (error) {
     res.status(400).json({
       message: "Server Error",
