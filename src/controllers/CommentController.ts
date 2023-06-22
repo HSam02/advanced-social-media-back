@@ -59,14 +59,19 @@ export const getPostsWithCommentsCount = async (posts: IPost[] | { [key: string]
 
 export const create = async (req: Request, res: Response) => {
   try {
+    const post = await PostModel.findById(req.params.id);
+    if (post?.hideComments) {
+      return res.status(403).json({
+        message: "Comments turned off for this post",
+      });
+    }
     const doc = new CommentModel({
       text: req.body.text.trim(),
       user: req.myId,
       postId: req.params.id,
     });
-    const comment = await doc.save();
-    const user = await UserModel.findById(req.myId).select(["username", "avatarDest"]);
-    res.json({ ...comment.toObject(), user: user?.toObject(), repliesCount: 0 });
+    const comment = await (await doc.save()).populate({ path: "user", select: ["username", "avatarDest"] });
+    res.json({ ...comment.toObject(), repliesCount: 0 });
   } catch (error) {
     res.status(400).json({
       message: "Comment didn't create",
@@ -77,21 +82,26 @@ export const create = async (req: Request, res: Response) => {
 
 export const reply = async (req: Request, res: Response) => {
   try {
-    const comment = await CommentModel.findById(req.params.id).select("postId");
+    const comment = await CommentModel.findById(req.params.id).populate("postId");
     if (!comment) {
       return res.status(404).json({
         message: "Comment didn't find",
+      });
+    }
+    const post = comment.postId as unknown as IPost;
+    if (post.hideComments) {
+      return res.status(403).json({
+        message: "Comments turned off for this post",
       });
     }
     const doc = new CommentModel({
       text: req.body.text.trim(),
       user: req.myId,
       parentId: req.params.id,
-      postId: comment.postId,
+      postId: post._id,
     });
-    const reply = await doc.save();
-    const user = await UserModel.findById(req.myId).select(["username", "avatarDest"]);
-    res.json({ ...reply.toObject(), user: user?.toObject() });
+    const reply = await (await doc.save()).populate({ path: "user", select: ["username", "avatarDest"] });
+    res.json(reply);
   } catch (error) {
     res.status(400).json({
       message: "Reply didn't create",
