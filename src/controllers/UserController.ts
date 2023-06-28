@@ -5,6 +5,8 @@ import multer from "multer";
 import fs from "fs";
 import UserModel, { IUser } from "../models/user.js";
 import PostModel from "../models/post.js";
+import FollowerModel from "../models/followerModel.js";
+import { getFollowing } from "./FollowerController.js";
 
 const avatarImageStorage = multer.diskStorage({
   destination: (req, __, callback) => {
@@ -140,25 +142,25 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-export const getMe = async (req: Request, res: Response) => {
-  try {
-    const user = await UserModel.findById(req.myId).select("-passwordHash");
+// export const getMe = async (req: Request, res: Response) => {
+//   try {
+//     const user = await UserModel.findById(req.myId).select("-passwordHash");
 
-    if (!user) {
-      return res.status(404).json({
-        message: "User didn't find",
-      });
-    }
-    const postsCount = await PostModel.countDocuments({ user: user._id });
+//     if (!user) {
+//       return res.status(404).json({
+//         message: "User didn't find",
+//       });
+//     }
+//     const postsCount = await PostModel.countDocuments({ user: user._id });
 
-    res.json({ ...user.toObject(), postsCount });
-  } catch (error) {
-    res.status(500).json({
-      message: "Can't get info",
-      error,
-    });
-  }
-};
+//     res.json({ ...user.toObject(), postsCount });
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Can't get info",
+//       error,
+//     });
+//   }
+// };
 
 export const checkIsFree = async (req: Request, res: Response) => {
   try {
@@ -262,13 +264,8 @@ export const searchUser = async (req: Request, res: Response) => {
 
 export const getUser = async (req: Request, res: Response) => {
   try {
-    const user = await UserModel.findOne({ username: req.params.username }).select([
-      "username",
-      "avatarDest",
-      "fullname",
-      "bio",
-      "privateAccaunt",
-    ]);
+    const query = req.params.username ? { username: req.params.username } : { _id: req.myId };
+    const user = await UserModel.findOne(query).select(["username", "avatarDest", "fullname", "bio", "privateAccaunt"]);
     if (!user) {
       return res.status(404).json({
         message: "User didn't find",
@@ -277,7 +274,9 @@ export const getUser = async (req: Request, res: Response) => {
 
     const postsCount = await PostModel.countDocuments({ user: user._id });
 
-    res.json({ ...user.toObject(), postsCount });
+    const followData = await getFollowing(req.myId || "", user._id as unknown as string);
+
+    res.json({ ...user.toObject(), postsCount, followData });
   } catch (error) {
     res.status(400).json({
       message: "Server Error",

@@ -3,7 +3,7 @@ import RecentSearchesModel from "../models/recentSearches.js";
 
 export const addToRecent = async (req: Request, res: Response) => {
   try {
-    await RecentSearchesModel.findOneAndDelete({ search: req.params.id });
+    await RecentSearchesModel.findOneAndDelete({ user: req.myId, search: req.params.id });
     const doc = new RecentSearchesModel({
       user: req.myId,
       search: req.params.id,
