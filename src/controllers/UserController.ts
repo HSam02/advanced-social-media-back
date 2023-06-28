@@ -5,7 +5,6 @@ import multer from "multer";
 import fs from "fs";
 import UserModel, { IUser } from "../models/user.js";
 import PostModel from "../models/post.js";
-import FollowerModel from "../models/followerModel.js";
 import { getFollowing } from "./FollowerController.js";
 
 const avatarImageStorage = multer.diskStorage({
@@ -78,8 +77,8 @@ export const register = async (req: Request, res: Response) => {
       },
     );
 
-    const userData: Partial<IUser> = user.toObject();
-    delete userData["passwordHash"];
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { email, passwordHash, ...userData } = user.toObject();
 
     res.json({
       user: userData,
@@ -118,8 +117,8 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    const userData: Partial<IUser> = user.toObject();
-    delete userData["passwordHash"];
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { email, passwordHash, ...userData } = user.toObject();
 
     const token = jwt.sign(
       {
@@ -133,7 +132,9 @@ export const login = async (req: Request, res: Response) => {
 
     const postsCount = await PostModel.countDocuments({ user: userData._id });
 
-    res.json({ user: { ...userData, postsCount }, token });
+    const followData = await getFollowing(req.myId || "", user._id as unknown as string);
+
+    res.json({ user: { ...userData, postsCount, followData }, token });
   } catch (error) {
     res.status(500).json({
       message: "Please, try later.",
