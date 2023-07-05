@@ -5,7 +5,7 @@ import multer from "multer";
 import fs from "fs";
 import UserModel, { IUser } from "../models/user.js";
 import PostModel from "../models/post.js";
-import { getFollowing } from "./FollowerController.js";
+import { getFollowData } from "./FollowerController.js";
 
 const avatarImageStorage = multer.diskStorage({
   destination: (req, __, callback) => {
@@ -132,7 +132,7 @@ export const login = async (req: Request, res: Response) => {
 
     const postsCount = await PostModel.countDocuments({ user: userData._id });
 
-    const followData = await getFollowing(req.myId || "", user._id as unknown as string);
+    const followData = await getFollowData("", userData._id as unknown as string);
 
     res.json({ user: { ...userData, postsCount, followData }, token });
   } catch (error) {
@@ -275,7 +275,7 @@ export const getUser = async (req: Request, res: Response) => {
 
     const postsCount = await PostModel.countDocuments({ user: user._id });
 
-    const followData = await getFollowing(req.myId || "", user._id as unknown as string);
+    const followData = await getFollowData(req.myId || "", user._id as unknown as string);
 
     res.json({ ...user.toObject(), postsCount, followData });
   } catch (error) {

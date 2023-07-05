@@ -55,6 +55,8 @@ app.delete("/auth/avatar", checkAuth, UserController.removeAvatar);
 
 app.post("/follow/:id", checkAuth, FollowerController.followTo);
 app.delete("/follow/:id", checkAuth, FollowerController.unfollow);
+app.get("/follow/followers/:username", checkAuth, getUserId, FollowerController.getFollowers);
+app.get("/follow/following/:username", checkAuth, getUserId, FollowerController.getFollowing);
 
 app.get("/search/:text", checkAuth, UserController.searchUser);
 
