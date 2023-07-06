@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { Schema, Document } from "mongoose";
 import CommentModel, { ICommentSchema } from "../models/comment.js";
 import UserModel from "../models/user.js";
+import PostModel, { IPost } from "../models/post.js";
 
 const getLikedField = (
   userId: string | undefined,
@@ -31,25 +32,46 @@ export const deleteCommentsByPostId = async (postId: string) => {
   }
 };
 
-export const getCommentsCount = async (postId: string) => {
-  try {
-    const commentsCount = await CommentModel.countDocuments({ postId });
-    return commentsCount;
-  } catch (error) {
-    return 0;
-  }
+// export const getCommentsCount = async (postId: string) => {
+//   try {
+//     const commentsCount = await CommentModel.countDocuments({ postId });
+//     return commentsCount;
+//   } catch (error) {
+//     return 0;
+//   }
+// };
+
+export const getPostsWithCommentsCount = async (posts: IPost[] | { [key: string]: any }[]) => {
+  const postIds = posts.map((post) => post._id);
+  const commentCounts = await CommentModel.aggregate([
+    { $match: { postId: { $in: postIds } } },
+    { $group: { _id: "$postId", count: { $sum: 1 } } },
+  ]);
+
+  return posts.map((post) => {
+    const commentsCount = commentCounts.find((count) => count._id.toString() === post._id.toString());
+    return {
+      ...post,
+      commentsCount: commentsCount ? (commentsCount.count as number) : 0,
+    };
+  });
 };
 
 export const create = async (req: Request, res: Response) => {
   try {
+    const post = await PostModel.findById(req.params.id);
+    if (post?.hideComments) {
+      return res.status(403).json({
+        message: "Comments turned off for this post",
+      });
+    }
     const doc = new CommentModel({
-      text: req.body.text,
+      text: req.body.text.trim(),
       user: req.myId,
       postId: req.params.id,
     });
-    const comment = await doc.save();
-    const user = await UserModel.findById(req.myId).select(["username", "avatarDest"]);
-    res.json({ ...comment.toObject(), user: user?.toObject(), repliesCount: 0 });
+    const comment = await (await doc.save()).populate({ path: "user", select: ["username", "avatarDest"] });
+    res.json({ ...comment.toObject(), repliesCount: 0 });
   } catch (error) {
     res.status(400).json({
       message: "Comment didn't create",
@@ -60,21 +82,26 @@ export const create = async (req: Request, res: Response) => {
 
 export const reply = async (req: Request, res: Response) => {
   try {
-    const comment = await CommentModel.findById(req.params.id).select("postId");
+    const comment = await CommentModel.findById(req.params.id).populate("postId");
     if (!comment) {
       return res.status(404).json({
         message: "Comment didn't find",
       });
     }
+    const post = comment.postId as unknown as IPost;
+    if (post.hideComments) {
+      return res.status(403).json({
+        message: "Comments turned off for this post",
+      });
+    }
     const doc = new CommentModel({
-      text: req.body.text,
+      text: req.body.text.trim(),
       user: req.myId,
       parentId: req.params.id,
-      postId: comment.postId,
+      postId: post._id,
     });
-    const reply = await doc.save();
-    const user = await UserModel.findById(req.myId).select(["username", "avatarDest"]);
-    res.json({ ...reply.toObject(), user: user?.toObject() });
+    const reply = await (await doc.save()).populate({ path: "user", select: ["username", "avatarDest"] });
+    res.json(reply);
   } catch (error) {
     res.status(400).json({
       message: "Reply didn't create",
@@ -87,14 +114,14 @@ export const remove = async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
 
-    const comment = await CommentModel.findById(id);
+    const comment = await CommentModel.findById(id).populate("postId");
     if (!comment) {
       return res.status(400).json({
         message: "Comment didn't find",
       });
     }
 
-    if (comment.user.toString() !== req.myId) {
+    if (comment.user.toString() !== req.myId && (comment.postId as unknown as IPost).user.toString() !== req.myId) {
       return res.status(403).json({
         message: "No access!",
       });
@@ -112,6 +139,13 @@ export const remove = async (req: Request, res: Response) => {
 
 export const getPostComments = async (req: Request, res: Response) => {
   try {
+    const post = await PostModel.findById(req.params.id).select("hideComments");
+    if (!post || post.hideComments) {
+      return res.status(400).json({
+        message: "Couldn't get comments",
+      });
+    }
+
     const lastId = req.query.lastId;
     const limit = Number(req.query.limit) > 0 ? Number(req.query.limit) : 10;
 

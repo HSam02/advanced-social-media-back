@@ -3,8 +3,9 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import multer from "multer";
 import fs from "fs";
-import UserModel, { IUser, IUserSchema } from "../models/user.js";
+import UserModel, { IUser } from "../models/user.js";
 import PostModel from "../models/post.js";
+import { getFollowData } from "./FollowerController.js";
 
 const avatarImageStorage = multer.diskStorage({
   destination: (req, __, callback) => {
@@ -76,8 +77,8 @@ export const register = async (req: Request, res: Response) => {
       },
     );
 
-    const userData: Partial<IUser> = user.toObject();
-    delete userData["passwordHash"];
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { email, passwordHash, ...userData } = user.toObject();
 
     res.json({
       user: userData,
@@ -101,9 +102,6 @@ export const login = async (req: Request, res: Response) => {
     const user = await UserModel.findOne({
       $or: [{ email: login }, { username: login }],
     });
-    // .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
-    // .populate({ path: "saved", populate: { path: "user", select: ["username", "avatarDest"] } })
-    // .exec();
 
     if (!user) {
       return res.status(403).json({
@@ -119,10 +117,8 @@ export const login = async (req: Request, res: Response) => {
       });
     }
 
-    const userData: Partial<IUser> = user.toObject();
-    delete userData["passwordHash"];
-    // userData.posts?.reverse();
-    // userData.saved?.reverse();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { email, passwordHash, ...userData } = user.toObject();
 
     const token = jwt.sign(
       {
@@ -136,7 +132,9 @@ export const login = async (req: Request, res: Response) => {
 
     const postsCount = await PostModel.countDocuments({ user: userData._id });
 
-    res.json({ user: { ...userData, postsCount }, token });
+    const followData = await getFollowData("", userData._id as unknown as string);
+
+    res.json({ user: { ...userData, postsCount, followData }, token });
   } catch (error) {
     res.status(500).json({
       message: "Please, try later.",
@@ -145,28 +143,25 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
-export const getUser = async (req: Request, res: Response) => {
-  try {
-    const user = await UserModel.findById(req.myId).select("-passwordHash");
-    // .populate({ path: "posts", populate: { path: "user", select: ["username", "avatarDest"] } })
-    // .populate({ path: "saved", populate: { path: "user", select: ["username", "avatarDest"] } })
-    // .exec();
+// export const getMe = async (req: Request, res: Response) => {
+//   try {
+//     const user = await UserModel.findById(req.myId).select("-passwordHash");
 
-    if (!user) {
-      return res.status(404).json({
-        message: "User didn't find",
-      });
-    }
-    const postsCount = await PostModel.countDocuments({ user: user._id });
+//     if (!user) {
+//       return res.status(404).json({
+//         message: "User didn't find",
+//       });
+//     }
+//     const postsCount = await PostModel.countDocuments({ user: user._id });
 
-    res.json({ ...user.toObject(), postsCount });
-  } catch (error) {
-    res.status(500).json({
-      message: "Can't get info",
-      error,
-    });
-  }
-};
+//     res.json({ ...user.toObject(), postsCount });
+//   } catch (error) {
+//     res.status(500).json({
+//       message: "Can't get info",
+//       error,
+//     });
+//   }
+// };
 
 export const checkIsFree = async (req: Request, res: Response) => {
   try {
@@ -240,6 +235,52 @@ export const removeAvatar = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(400).json({
       message: "Avatar didn't removed",
+      error,
+    });
+  }
+};
+
+export const searchUser = async (req: Request, res: Response) => {
+  try {
+    const lastId = req.query.lastId;
+
+    const text = req.params.text;
+    const regex = { $regex: new RegExp(text, "i") };
+    const query: { [key: string]: any } = { $or: [{ username: regex }, { fullname: regex }] };
+    const usersCount = await UserModel.countDocuments(query);
+
+    if (lastId) {
+      query._id = { $gt: lastId as string };
+    }
+
+    const users = await UserModel.find(query).select(["username", "avatarDest", "fullname"]).limit(50);
+    res.json({ users, usersCount });
+  } catch (error) {
+    res.status(400).json({
+      message: "Server Error",
+      error,
+    });
+  }
+};
+
+export const getUser = async (req: Request, res: Response) => {
+  try {
+    const query = req.params.username ? { username: req.params.username } : { _id: req.myId };
+    const user = await UserModel.findOne(query).select(["username", "avatarDest", "fullname", "bio", "privateAccaunt"]);
+    if (!user) {
+      return res.status(404).json({
+        message: "User didn't find",
+      });
+    }
+
+    const postsCount = await PostModel.countDocuments({ user: user._id });
+
+    const followData = await getFollowData(req.myId || "", user._id as unknown as string);
+
+    res.json({ ...user.toObject(), postsCount, followData });
+  } catch (error) {
+    res.status(400).json({
+      message: "Server Error",
       error,
     });
   }

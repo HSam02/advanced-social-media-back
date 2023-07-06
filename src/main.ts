@@ -13,7 +13,13 @@ import {
 } from "./validations.js";
 import { handleValidationErrors, checkAuth } from "./utils/index.js";
 
-import { UserController, PostController, CommentController } from "./controllers/index.js";
+import {
+  UserController,
+  PostController,
+  CommentController,
+  RecentSearchesController,
+  FollowerController,
+} from "./controllers/index.js";
 import getUserId from "./utils/getUserId.js";
 
 const app: Express = express();
@@ -42,12 +48,22 @@ app.use("/uploads", express.static("./src/uploads"));
 
 app.post("/auth/register", registerValidation, handleValidationErrors, UserController.register);
 app.post("/auth/login", loginValidation, handleValidationErrors, UserController.login);
-app.get("/auth/me", checkAuth, UserController.getUser);
+// app.get("/auth/me", checkAuth, UserController.getMe);
 app.post("/auth/check", checkValidation, handleValidationErrors, UserController.checkIsFree);
 app.post("/auth/avatar", checkAuth, UserController.uploadAvatar);
 app.delete("/auth/avatar", checkAuth, UserController.removeAvatar);
 
-// app.get("/user/posts", checkAuth, PostController.getUserPosts);
+app.post("/follow/:id", checkAuth, FollowerController.followTo);
+app.delete("/follow/:id", checkAuth, FollowerController.unfollow);
+app.get("/follow/followers/:username", checkAuth, getUserId, FollowerController.getFollowers);
+app.get("/follow/following/:username", checkAuth, getUserId, FollowerController.getFollowing);
+
+app.get("/search/:text", checkAuth, UserController.searchUser);
+
+app.post("/recent/search/:id", checkAuth, RecentSearchesController.addToRecent);
+app.get("/recent/search", checkAuth, RecentSearchesController.getRecents);
+app.delete("/recent/search", checkAuth, RecentSearchesController.removeAll);
+app.delete("/recent/search/:id", checkAuth, RecentSearchesController.removeRecent);
 
 app.post(
   "/posts",
@@ -60,6 +76,8 @@ app.get("/posts/:id", checkAuth, PostController.getOne);
 app.delete("/posts/:id", checkAuth, PostController.remove);
 app.patch("/posts/:id", checkAuth, postEditValidation, handleValidationErrors, PostController.edit);
 
+app.get("/user", checkAuth, UserController.getUser);
+app.get("/user/:username", checkAuth, UserController.getUser);
 app.get("/user/posts/:username", checkAuth, getUserId, PostController.getUserPosts);
 app.get("/user/reels/:username", checkAuth, getUserId, PostController.getUserReels);
 app.get("/user/saved", checkAuth, PostController.getUserSavedPosts);

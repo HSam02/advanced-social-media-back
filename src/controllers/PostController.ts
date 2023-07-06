@@ -4,32 +4,9 @@ import multer from "multer";
 import fs from "fs";
 import PostModel, { IPostSchema } from "../models/post.js";
 import UserModel from "../models/user.js";
-import { deleteCommentsByPostId, getCommentsCount } from "./CommentController.js";
+import { deleteCommentsByPostId, getPostsWithCommentsCount } from "./CommentController.js";
 
-// const getResPosts = (
-//   userId: string | undefined,
-//   posts: Omit<
-//     mongoose.Document<unknown, any, IPostSchema> &
-//       IPostSchema &
-//       Required<{
-//         _id: mongoose.Schema.Types.ObjectId;
-//       }>,
-//     never
-//   >[],
-// ) => {
-//   return posts.map((post) => {
-//     const liked = Boolean(post.likes.find((like) => like.user.toString() === userId));
-//     const saved = Boolean(post.saves.find((save) => save.user.toString() === userId));
-//     const { saves, ...halfPost } = post.toObject();
-//     return {
-//       liked,
-//       saved,
-//       ...halfPost,
-//     };
-//   });
-// };
-
-const getResPosts = async (
+const getPostsWithLikedAndSavedFields = (
   userId: string | undefined,
   posts: Omit<
     mongoose.Document<unknown, any, IPostSchema> &
@@ -40,29 +17,52 @@ const getResPosts = async (
     never
   >[],
 ) => {
-  try {
-    const updatedPosts = await Promise.all(
-      posts.map(async (post) => {
-        const liked = Boolean(post.likes.find((like) => like.user.toString() === userId));
-        const saved = Boolean(post.saves.find((save) => save.user.toString() === userId));
-        const commentsCount = await getCommentsCount(post._id.toString());
-        const { saves, ...halfPost } = post.toObject();
-
-        return {
-          liked,
-          saved,
-          commentsCount,
-          ...halfPost,
-        };
-      }),
-    );
-
-    return updatedPosts;
-  } catch (error) {
-    console.error(error);
-    return [];
-  }
+  return posts.map((post) => {
+    const liked = Boolean(post.likes.find((like) => like.user.toString() === userId));
+    const saved = Boolean(post.saves.find((save) => save.user.toString() === userId));
+    const { saves, ...halfPost } = post.toObject();
+    return {
+      liked,
+      saved,
+      ...halfPost,
+    };
+  });
 };
+
+// const getResPosts = async (
+//   userId: string | undefined,
+//   posts: Omit<
+//     mongoose.Document<unknown, any, IPostSchema> &
+//       IPostSchema &
+//       Required<{
+//         _id: mongoose.Schema.Types.ObjectId;
+//       }>,
+//     never
+//   >[],
+// ) => {
+//   try {
+//     const updatedPosts = await Promise.all(
+//       posts.map(async (post) => {
+//         const liked = Boolean(post.likes.find((like) => like.user.toString() === userId));
+//         const saved = Boolean(post.saves.find((save) => save.user.toString() === userId));
+//         const commentsCount = await getCommentsCount(post._id.toString());
+//         const { saves, ...halfPost } = post.toObject();
+
+//         return {
+//           liked,
+//           saved,
+//           commentsCount,
+//           ...halfPost,
+//         };
+//       }),
+//     );
+
+//     return updatedPosts;
+//   } catch (error) {
+//     console.error(error);
+//     return [];
+//   }
+// };
 
 const postsMediaStorage = multer.diskStorage({
   destination: (req, __, callback) => {
@@ -124,6 +124,7 @@ export const create = (req: Request, res: Response) => {
     }
     try {
       const data: IPostSchema = JSON.parse(req.body.data);
+      data.text = data.text.trim();
 
       const files = req.files as Express.Multer.File[];
       const filesDest = files.map((file) => file.destination.slice(5) + "/" + file.filename);
@@ -133,11 +134,9 @@ export const create = (req: Request, res: Response) => {
 
       const doc = new PostModel(data);
       const post = await doc.save();
-      const user = await UserModel.findOneAndUpdate({ _id: req.myId }).select(["username", "avatarDest"]);
 
       res.json({
         ...post.toObject(),
-        user,
       });
     } catch (error) {
       res.status(400).json({
@@ -211,9 +210,11 @@ export const getUserPosts = async (req: Request, res: Response) => {
       });
     }
 
-    const newData = await getResPosts(req.myId, posts);
+    const postsWithLikedAndSavedFields = getPostsWithLikedAndSavedFields(req.myId, posts);
 
-    res.json({ posts: newData, postsCount });
+    const postsWithCommentsCount = await getPostsWithCommentsCount(postsWithLikedAndSavedFields);
+
+    res.json({ posts: postsWithCommentsCount, postsCount });
   } catch (error) {
     res.status(400).json({
       message: "The post didn't find",
@@ -251,9 +252,11 @@ export const getUserSavedPosts = async (req: Request, res: Response) => {
       });
     }
 
-    const newData = await getResPosts(req.myId, posts);
+    const postsWithLikedAndSavedFields = getPostsWithLikedAndSavedFields(req.myId, posts);
 
-    res.json({ posts: newData, postsCount });
+    const postsWithCommentsCount = await getPostsWithCommentsCount(postsWithLikedAndSavedFields);
+
+    res.json({ posts: postsWithCommentsCount, postsCount });
   } catch (error) {
     res.status(400).json({
       message: "The post didn't find",
@@ -312,9 +315,11 @@ export const getUserReels = async (req: Request, res: Response) => {
       });
     }
 
-    const newData = await getResPosts(req.myId, posts);
+    const postsWithLikedAndSavedFields = getPostsWithLikedAndSavedFields(req.myId, posts);
 
-    res.json({ posts: newData, postsCount });
+    const postsWithCommentsCount = await getPostsWithCommentsCount(postsWithLikedAndSavedFields);
+
+    res.json({ posts: postsWithCommentsCount, postsCount });
   } catch (error) {
     res.status(400).json({
       message: "The post didn't find",
@@ -451,7 +456,11 @@ export const edit = async (req: Request, res: Response) => {
         message: "No access!",
       });
     }
-    await PostModel.findByIdAndUpdate(req.params.id, { $set: req.body });
+    const data = req.body;
+    if (data.text) {
+      data.text = data.text.trim();
+    }
+    await PostModel.findByIdAndUpdate(req.params.id, { $set: data });
     res.json({
       success: true,
     });
