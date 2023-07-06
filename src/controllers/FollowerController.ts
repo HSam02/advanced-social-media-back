@@ -115,7 +115,7 @@ export const getFollowers = async (req: Request, res: Response) => {
 
     const followersWithFollowingData = await getUsersFollowData(followers as unknown as IUser[], req.myId);
 
-    res.json({ followers: followersWithFollowingData, followersCount });
+    res.json({ follows: followersWithFollowingData, followsCount: followersCount });
   } catch (error) {
     res.status(400).json({
       message: "Server error",
@@ -128,7 +128,7 @@ export const getFollowing = async (req: Request, res: Response) => {
   try {
     const lastId = req.query.lastId;
     const limit = Number(req.query.limit) > 0 ? Number(req.query.limit) : 10;
-    const followersCount = await FollowerModel.countDocuments({ user: req.userId });
+    const followingCount = await FollowerModel.countDocuments({ user: req.userId });
 
     const query: { user?: string; _id?: { $lt: string } } = {
       user: req.userId,
@@ -144,19 +144,19 @@ export const getFollowing = async (req: Request, res: Response) => {
     const followers = (
       await FollowerModel.find(query)
         .limit(limit)
-        .populate({ path: "user", select: ["username", "fullname", "avatarDest"] })
+        .populate({ path: "followTo", select: ["username", "fullname", "avatarDest"] })
         .exec()
-    ).map((follower) => follower.toObject().user);
+    ).map((follower) => follower.toObject().followTo);
 
     if (!followers) {
       return res.status(404).json({
-        message: "Followers didn't find",
+        message: "Follows didn't find",
       });
     }
 
     const followersWithFollowingData = await getUsersFollowData(followers as unknown as IUser[], req.myId);
 
-    res.json({ followers: followersWithFollowingData, followersCount });
+    res.json({ follows: followersWithFollowingData, followsCount: followingCount });
   } catch (error) {
     res.status(400).json({
       message: "Server error",
