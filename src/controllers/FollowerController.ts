@@ -87,6 +87,20 @@ export const unfollow = async (req: Request, res: Response) => {
   }
 };
 
+export const removeFollower = async (req: Request, res: Response) => {
+  try {
+    await FollowerModel.deleteOne({ user: req.params.id, followTo: req.myId });
+    res.json({
+      success: true,
+    });
+  } catch (error) {
+    res.status(400).json({
+      message: "Server error",
+      error,
+    });
+  }
+};
+
 export const getFollowers = async (req: Request, res: Response) => {
   try {
     const lastId = req.query.lastId;
