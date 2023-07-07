@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
-import mongoose from "mongoose";
+import mongoose, { Document } from "mongoose";
 import FollowerModel, { IFollower } from "../models/followerModel.js";
-import { IUser } from "../models/user.js";
+import { IUser, IUserSchema } from "../models/user.js";
 
 export const getFollowData = async (myId: string, userId: string) => {
   const followed = myId ? Boolean(await FollowerModel.findOne({ user: myId, followTo: userId })) : false;
@@ -12,8 +12,8 @@ export const getFollowData = async (myId: string, userId: string) => {
   return { followed, following, followersCount, followingCount };
 };
 
-export const getUsersFollowData = async (followers: IUser[], myId?: string) => {
-  const userIds = followers.map((follower) => follower._id);
+export const getUsersFollowData = async (users: IUser[], myId?: string) => {
+  const userIds = users.map((user) => user._id);
 
   const followedArray = await FollowerModel.aggregate<IFollower>([
     {
@@ -33,11 +33,19 @@ export const getUsersFollowData = async (followers: IUser[], myId?: string) => {
     },
   ]);
 
-  return followers.map((follower) => ({
-    ...follower,
+  return users.map((user) => ({
+    ...(
+      user as unknown as
+        | (Document<unknown, any, IUserSchema> &
+            IUserSchema &
+            Required<{
+              _id: mongoose.Schema.Types.ObjectId;
+            }>)
+        | null
+    )?.toObject(),
     followData: {
-      followed: followedArray.some((followed) => followed.followTo.toString() === follower._id.toString()),
-      following: followingArray.some((following) => following.user.toString() === follower._id.toString()),
+      followed: followedArray.some((followed) => followed.followTo.toString() === user._id.toString()),
+      following: followingArray.some((following) => following.user.toString() === user._id.toString()),
     },
   }));
 };

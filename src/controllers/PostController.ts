@@ -2,25 +2,16 @@ import { Request, Response } from "express";
 import mongoose from "mongoose";
 import multer from "multer";
 import fs from "fs";
-import PostModel, { IPostSchema } from "../models/post.js";
-import UserModel from "../models/user.js";
+import PostModel, { IPost, IPostSchema } from "../models/post.js";
+import { IUser } from "../models/user.js";
 import { deleteCommentsByPostId, getPostsWithCommentsCount } from "./CommentController.js";
+import { getUsersFollowData } from "./FollowerController.js";
 
-const getPostsWithLikedAndSavedFields = (
-  userId: string | undefined,
-  posts: Omit<
-    mongoose.Document<unknown, any, IPostSchema> &
-      IPostSchema &
-      Required<{
-        _id: mongoose.Schema.Types.ObjectId;
-      }>,
-    never
-  >[],
-) => {
+const getPostsWithLikedAndSavedFields = (userId: string | undefined, posts: IPost[]) => {
   return posts.map((post) => {
     const liked = Boolean(post.likes.find((like) => like.user.toString() === userId));
     const saved = Boolean(post.saves.find((save) => save.user.toString() === userId));
-    const { saves, ...halfPost } = post.toObject();
+    const { saves, ...halfPost } = post;
     return {
       liked,
       saved,
@@ -29,40 +20,51 @@ const getPostsWithLikedAndSavedFields = (
   });
 };
 
-// const getResPosts = async (
-//   userId: string | undefined,
-//   posts: Omit<
-//     mongoose.Document<unknown, any, IPostSchema> &
-//       IPostSchema &
-//       Required<{
-//         _id: mongoose.Schema.Types.ObjectId;
-//       }>,
-//     never
-//   >[],
-// ) => {
-//   try {
-//     const updatedPosts = await Promise.all(
-//       posts.map(async (post) => {
-//         const liked = Boolean(post.likes.find((like) => like.user.toString() === userId));
-//         const saved = Boolean(post.saves.find((save) => save.user.toString() === userId));
-//         const commentsCount = await getCommentsCount(post._id.toString());
-//         const { saves, ...halfPost } = post.toObject();
+const getCompletedPostsData = async (
+  posts: Omit<
+    mongoose.Document<unknown, any, IPostSchema> &
+      IPostSchema &
+      Required<{
+        _id: mongoose.Schema.Types.ObjectId;
+      }>,
+    never
+  >[],
+  myId: string,
+) => {
+  try {
+    const users: IUser[] = [];
+    posts.forEach((post) => {
+      const postUser = post.user as unknown as IUser;
+      if (!users.some((user) => user._id === postUser._id)) {
+        users.push(postUser);
+      }
+    });
 
-//         return {
-//           liked,
-//           saved,
-//           commentsCount,
-//           ...halfPost,
-//         };
-//       }),
-//     );
+    const usersWithFollowData = await getUsersFollowData(users, myId);
 
-//     return updatedPosts;
-//   } catch (error) {
-//     console.error(error);
-//     return [];
-//   }
-// };
+    const postsWithUserFollowData = posts.map((post) => {
+      const userData = usersWithFollowData.find(
+        (user) => user._id?.toString() === (post.user as unknown as IUser)._id.toString(),
+      );
+
+      return {
+        ...post.toObject(),
+        user: userData,
+      };
+    });
+
+    const postsWithLikedAndSavedFields = getPostsWithLikedAndSavedFields(
+      myId,
+      postsWithUserFollowData as unknown as IPost[],
+    );
+
+    const postsWithCommentsCount = await getPostsWithCommentsCount(postsWithLikedAndSavedFields);
+
+    return postsWithCommentsCount;
+  } catch (error) {
+    console.error(error);
+  }
+};
 
 const postsMediaStorage = multer.diskStorage({
   destination: (req, __, callback) => {
@@ -210,11 +212,9 @@ export const getUserPosts = async (req: Request, res: Response) => {
       });
     }
 
-    const postsWithLikedAndSavedFields = getPostsWithLikedAndSavedFields(req.myId, posts);
+    const completedPostsData = await getCompletedPostsData(posts, req.myId || "");
 
-    const postsWithCommentsCount = await getPostsWithCommentsCount(postsWithLikedAndSavedFields);
-
-    res.json({ posts: postsWithCommentsCount, postsCount });
+    res.json({ posts: completedPostsData, postsCount });
   } catch (error) {
     res.status(400).json({
       message: "The post didn't find",
@@ -252,11 +252,9 @@ export const getUserSavedPosts = async (req: Request, res: Response) => {
       });
     }
 
-    const postsWithLikedAndSavedFields = getPostsWithLikedAndSavedFields(req.myId, posts);
+    const completedPostsData = await getCompletedPostsData(posts, req.myId || "");
 
-    const postsWithCommentsCount = await getPostsWithCommentsCount(postsWithLikedAndSavedFields);
-
-    res.json({ posts: postsWithCommentsCount, postsCount });
+    res.json({ posts: completedPostsData, postsCount });
   } catch (error) {
     res.status(400).json({
       message: "The post didn't find",
@@ -315,11 +313,9 @@ export const getUserReels = async (req: Request, res: Response) => {
       });
     }
 
-    const postsWithLikedAndSavedFields = getPostsWithLikedAndSavedFields(req.myId, posts);
+    const completedPostsData = await getCompletedPostsData(posts, req.myId || "");
 
-    const postsWithCommentsCount = await getPostsWithCommentsCount(postsWithLikedAndSavedFields);
-
-    res.json({ posts: postsWithCommentsCount, postsCount });
+    res.json({ posts: completedPostsData, postsCount });
   } catch (error) {
     res.status(400).json({
       message: "The post didn't find",
