@@ -132,7 +132,7 @@ export const getFollowers = async (req: Request, res: Response) => {
         .limit(limit)
         .populate({ path: "user", select: ["username", "fullname", "avatarDest"] })
         .exec()
-    ).map((follower) => follower.toObject().user);
+    ).map((follower) => follower.user);
 
     if (!followers) {
       return res.status(404).json({
@@ -173,7 +173,7 @@ export const getFollowing = async (req: Request, res: Response) => {
         .limit(limit)
         .populate({ path: "followTo", select: ["username", "fullname", "avatarDest"] })
         .exec()
-    ).map((follower) => follower.toObject().followTo);
+    ).map((follower) => follower.followTo);
 
     if (!followers) {
       return res.status(404).json({
