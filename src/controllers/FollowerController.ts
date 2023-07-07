@@ -44,6 +44,11 @@ export const getUsersFollowData = async (followers: IUser[], myId?: string) => {
 
 export const followTo = async (req: Request, res: Response) => {
   try {
+    if (req.myId === req.params.id) {
+      return res.status(400).json({
+        message: "You can't follow yourself",
+      });
+    }
     const followed = await FollowerModel.findOne({ user: req.myId, followTo: req.params.id });
     if (followed) {
       return res.status(403).json({
